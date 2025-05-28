@@ -45,12 +45,6 @@ const RegisterScreen = ({ navigation }) => {
 
     try {
       await signup({ username, email, password });
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'VerifyEmail', params: { email } }],
-        })
-      );
       Alert.alert(
         'Registro exitoso',
         'Tu cuenta ha sido creada. Por favor verifica tu email.',

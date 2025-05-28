@@ -8,6 +8,7 @@ const initialState = {
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  pendingVerification: null,
 };
 
 // Tipos de acciones
@@ -16,6 +17,8 @@ const AUTH_ACTIONS = {
   LOGIN_SUCCESS: 'LOGIN_SUCCESS',
   LOGOUT: 'LOGOUT',
   SET_USER: 'SET_USER',
+  SET_PENDING_VERIFICATION: 'SET_PENDING_VERIFICATION', 
+  CLEAR_PENDING_VERIFICATION: 'CLEAR_PENDING_VERIFICATION', 
 };
 
 // Reducer
@@ -47,6 +50,16 @@ const authReducer = (state, action) => {
         ...state,
         user: action.payload,
         isLoading: false,
+      };
+    case AUTH_ACTIONS.SET_PENDING_VERIFICATION:
+      return { 
+        ...state, 
+        pendingVerification: action.payload 
+      };
+    case AUTH_ACTIONS.CLEAR_PENDING_VERIFICATION:
+      return { 
+        ...state, 
+        pendingVerification: null 
       };
     default:
       return state;
@@ -121,6 +134,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       const response = await authService.signup(userData);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+      dispatch({ type: AUTH_ACTIONS.SET_PENDING_VERIFICATION, payload: userData.email }); // <-- NUEVO
       return response;
     } catch (error) {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
@@ -198,6 +212,7 @@ export const AuthProvider = ({ children }) => {
     verifyResetCode,
     resetPassword,
     resendCode,
+    dispatch,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

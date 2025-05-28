@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 // Importar pantallas
 import LoginScreen from '../screens/LoginScreen';
@@ -87,18 +88,51 @@ const MainStack = () => {
   );
 };
 
+const AuthStackWithInitial = ({ initialRouteName, pendingVerification }) => (
+  <Stack.Navigator
+    initialRouteName={initialRouteName}
+    screenOptions={{
+      headerStyle: { backgroundColor: '#2196F3' },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: 'bold' },
+    }}
+  >
+    <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
+    <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro' }} />
+    <Stack.Screen
+      name="VerifyEmail"
+      component={VerifyEmailScreen}
+      options={{ title: 'Verificar Email' }}
+      initialParams={pendingVerification ? { email: pendingVerification } : undefined}
+    />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} />
+    <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} options={{ title: 'Verificar Código' }} />
+    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nueva Contraseña' }} />
+  </Stack.Navigator>
+);
+
 // Navegador principal
 const AppNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, pendingVerification } = useAuth();
 
   if (isLoading) {
-    // Aquí podrías mostrar una pantalla de carga
-    return null;
+    return <LoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return (
+      <NavigationContainer>
+        <MainStack />
+      </NavigationContainer>
+    );
   }
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainStack /> : <AuthStack />}
+      <AuthStackWithInitial
+        initialRouteName={pendingVerification ? 'VerifyEmail' : 'Login'}
+        pendingVerification={pendingVerification}
+      />
     </NavigationContainer>
   );
 };

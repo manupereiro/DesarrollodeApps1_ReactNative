@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
   View,
   Text,
@@ -10,12 +11,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 
 const VerifyEmailScreen = ({ navigation, route }) => {
+  const { verifyAccount, resendCode, isLoading, dispatch } = useAuth();
   const { email } = route.params || {};
   const [verificationCode, setVerificationCode] = useState('');
-  const { verifyAccount, resendCode, isLoading } = useAuth();
 
   const handleVerify = async () => {
     if (!verificationCode.trim()) {
@@ -30,6 +30,7 @@ const VerifyEmailScreen = ({ navigation, route }) => {
 
     try {
       await verifyAccount({ email, verificationCode });
+      dispatch({ type: 'CLEAR_PENDING_VERIFICATION' }); // <-- NUEVO
       Alert.alert(
         'Verificación exitosa',
         'Tu cuenta ha sido verificada correctamente',
@@ -106,7 +107,10 @@ const VerifyEmailScreen = ({ navigation, route }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => {
+            dispatch({ type: 'CLEAR_PENDING_VERIFICATION' }); 
+            navigation.navigate('Login');
+          }}
           disabled={isLoading}
         >
           <Text style={styles.linkText}>Volver al login</Text>
