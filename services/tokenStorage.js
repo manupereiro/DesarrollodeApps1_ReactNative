@@ -1,157 +1,185 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '../config/constants';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-class TokenStorage {
-  /**
-   * Guardar token de usuario
-   * @param {string} token 
-   */
-  static async setToken(token) {
-    try {
-      if (token) {
-        await AsyncStorage.setItem(STORAGE_KEYS.USER_TOKEN, token);
-        console.log('🔐 Token guardado exitosamente');
-      }
-    } catch (error) {
-      console.error('❌ Error guardando token:', error);
-      throw error;
+// Check if we're running on web
+const isWeb = Platform.OS === 'web';
+
+// Mock implementation for web environment using localStorage
+const webStorage = {
+  setItemAsync: (key, value) => {
+    localStorage.setItem(key, value);
+    return Promise.resolve();
+  },
+  getItemAsync: (key) => {
+    const value = localStorage.getItem(key);
+    return Promise.resolve(value);
+  },
+  deleteItemAsync: (key) => {
+    localStorage.removeItem(key);
+    return Promise.resolve();
+  },
+};
+
+// Use the appropriate storage implementation
+const storage = isWeb ? webStorage : SecureStore;
+
+export const saveToken = async (token) => {
+  try {
+    console.log('🔐 TokenStorage: Guardando token...');
+    await storage.setItemAsync('jwt', token);
+    console.log('✅ TokenStorage: Token guardado exitosamente');
+  } catch (error) {
+    console.error('❌ Error saving token:', error);
+    // Fallback to a simpler implementation if the method doesn't exist
+    if (isWeb) {
+      localStorage.setItem('jwt', token);
     }
   }
+};
 
-  /**
-   * Obtener token de usuario
-   * @returns {Promise<string|null>}
-   */
-  static async getToken() {
-    try {
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
-      return token;
-    } catch (error) {
-      console.error('❌ Error obteniendo token:', error);
-      return null;
+export const getToken = async () => {
+  try {
+    console.log('🔍 TokenStorage: Obteniendo token...');
+    const token = await storage.getItemAsync('jwt');
+    console.log('🔍 TokenStorage: Token obtenido:', token ? 'existe' : 'no existe');
+    return token;
+  } catch (error) {
+    console.error('❌ Error getting token:', error);
+    // Fallback to a simpler implementation if the method doesn't exist
+    if (isWeb) {
+      return localStorage.getItem('jwt');
+    }
+    return null;
+  }
+};
+
+export const removeToken = async () => {
+  try {
+    console.log('🧹 TokenStorage: Eliminando token...');
+    await storage.deleteItemAsync('jwt');
+    console.log('✅ TokenStorage: Token eliminado exitosamente');
+  } catch (error) {
+    console.error('❌ Error removing token:', error);
+    // Fallback to a simpler implementation if the method doesn't exist
+    if (isWeb) {
+      localStorage.removeItem('jwt');
     }
   }
+};
 
-  /**
-   * Eliminar token de usuario
-   */
-  static async removeToken() {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_TOKEN);
-      console.log('🗑️ Token eliminado exitosamente');
-    } catch (error) {
-      console.error('❌ Error eliminando token:', error);
-      throw error;
+// Funciones adicionales para datos de usuario
+export const saveUserData = async (userData) => {
+  try {
+    console.log('👤 TokenStorage: Guardando datos de usuario...');
+    await storage.setItemAsync('userData', JSON.stringify(userData));
+    console.log('✅ TokenStorage: Datos de usuario guardados');
+  } catch (error) {
+    console.error('❌ Error saving user data:', error);
+    if (isWeb) {
+      localStorage.setItem('userData', JSON.stringify(userData));
     }
   }
+};
 
-  /**
-   * Verificar si existe un token
-   * @returns {Promise<boolean>}
-   */
-  static async hasToken() {
-    try {
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.USER_TOKEN);
-      return !!token;
-    } catch (error) {
-      console.error('❌ Error verificando token:', error);
-      return false;
+export const getUserData = async () => {
+  try {
+    console.log('👤 TokenStorage: Obteniendo datos de usuario...');
+    const userDataString = await storage.getItemAsync('userData');
+    if (userDataString) {
+      const userData = JSON.parse(userDataString);
+      console.log('👤 TokenStorage: Datos de usuario obtenidos');
+      return userData;
+    }
+    console.log('👤 TokenStorage: No hay datos de usuario');
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting user data:', error);
+    if (isWeb) {
+      const userDataString = localStorage.getItem('userData');
+      return userDataString ? JSON.parse(userDataString) : null;
+    }
+    return null;
+  }
+};
+
+export const removeUserData = async () => {
+  try {
+    console.log('🧹 TokenStorage: Eliminando datos de usuario...');
+    await storage.deleteItemAsync('userData');
+    console.log('✅ TokenStorage: Datos de usuario eliminados');
+  } catch (error) {
+    console.error('❌ Error removing user data:', error);
+    if (isWeb) {
+      localStorage.removeItem('userData');
     }
   }
+};
 
-  /**
-   * Guardar datos del usuario
-   * @param {object} userData 
-   */
-  static async setUserData(userData) {
+// Funciones compuestas para mantener compatibilidad con el código existente
+const TokenStorage = {
+  setToken: saveToken,
+  getToken: getToken,
+  removeToken: removeToken,
+  clearToken: removeToken,
+  
+  setUserData: saveUserData,
+  getUserData: getUserData,
+  removeUserData: removeUserData,
+  clearUserData: removeUserData,
+  
+  setAuthData: async (token, userData = null) => {
     try {
+      console.log('🔐 TokenStorage: Guardando datos de autenticación completos...');
+      await saveToken(token);
       if (userData) {
-        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
-        console.log('👤 Datos de usuario guardados exitosamente');
+        await saveUserData(userData);
       }
+      console.log('✅ TokenStorage: Datos de autenticación guardados exitosamente');
     } catch (error) {
-      console.error('❌ Error guardando datos de usuario:', error);
+      console.error('❌ TokenStorage: Error guardando datos de autenticación:', error);
       throw error;
     }
-  }
-
-  /**
-   * Obtener datos del usuario
-   * @returns {Promise<object|null>}
-   */
-  static async getUserData() {
+  },
+  
+  getAuthData: async () => {
     try {
-      const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
-      return userData ? JSON.parse(userData) : null;
-    } catch (error) {
-      console.error('❌ Error obteniendo datos de usuario:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Eliminar datos del usuario
-   */
-  static async removeUserData() {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
-      console.log('🗑️ Datos de usuario eliminados exitosamente');
-    } catch (error) {
-      console.error('❌ Error eliminando datos de usuario:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Limpiar todo el almacenamiento de autenticación
-   */
-  static async clearAll() {
-    try {
-      await Promise.all([
-        AsyncStorage.removeItem(STORAGE_KEYS.USER_TOKEN),
-        AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA)
-      ]);
-      console.log('🧹 Almacenamiento de autenticación limpio');
-    } catch (error) {
-      console.error('❌ Error limpiando almacenamiento:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Guardar tanto token como datos de usuario
-   * @param {string} token 
-   * @param {object} userData 
-   */
-  static async setAuthData(token, userData) {
-    try {
-      await Promise.all([
-        this.setToken(token),
-        userData ? this.setUserData(userData) : Promise.resolve()
-      ]);
-      console.log('✅ Datos de autenticación guardados completos');
-    } catch (error) {
-      console.error('❌ Error guardando datos de autenticación:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtener todos los datos de autenticación
-   * @returns {Promise<{token: string|null, userData: object|null}>}
-   */
-  static async getAuthData() {
-    try {
-      const [token, userData] = await Promise.all([
-        this.getToken(),
-        this.getUserData()
-      ]);
+      console.log('🔍 TokenStorage: Obteniendo datos de autenticación completos...');
+      const token = await getToken();
+      const userData = await getUserData();
+      console.log('🔍 TokenStorage: Datos obtenidos - Token:', token ? 'existe' : 'no existe', 'Usuario:', userData ? 'existe' : 'no existe');
       return { token, userData };
     } catch (error) {
-      console.error('❌ Error obteniendo datos de autenticación:', error);
+      console.error('❌ TokenStorage: Error obteniendo datos de autenticación:', error);
       return { token: null, userData: null };
     }
+  },
+  
+  clearAll: async () => {
+    try {
+      console.log('🧹 TokenStorage: Limpiando todos los datos de autenticación...');
+      await Promise.all([
+        removeToken(),
+        removeUserData()
+      ]);
+      console.log('✅ TokenStorage: Todos los datos eliminados exitosamente');
+    } catch (error) {
+      console.error('❌ TokenStorage: Error limpiando datos:', error);
+    }
+  },
+  
+  hasAuthData: async () => {
+    try {
+      const token = await getToken();
+      return !!token;
+    } catch (error) {
+      console.error('❌ TokenStorage: Error verificando datos:', error);
+      return false;
+    }
+  },
+  
+  hasToken: async () => {
+    return TokenStorage.hasAuthData();
   }
-}
+};
 
 export default TokenStorage; 
