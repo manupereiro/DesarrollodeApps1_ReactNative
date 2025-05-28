@@ -72,7 +72,7 @@ const AuthStackWithInitial = ({ initialRoute }) => {
 const MainStack = () => {
   return (
     <Stack.Navigator
-      initialRouteName="HomeScreen"
+      initialRouteName="Home"
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2196F3',

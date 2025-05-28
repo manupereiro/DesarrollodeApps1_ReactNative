@@ -48,12 +48,6 @@ const HomeScreen = () => {
           >
             <Ionicons name="person-circle-outline" size={28} color="#2196F3" />
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={28} color="#FF3B30" />
-          </TouchableOpacity>
         </View>
       </View>
 
