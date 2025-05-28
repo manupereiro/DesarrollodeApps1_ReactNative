@@ -1,29 +1,27 @@
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 // Importar pantallas
-import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import VerifyCodeScreen from '../screens/VerifyCodeScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import VerifyCodeScreen from '../screens/VerifyCodeScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import HomeScreen from '../screens/HomeScreen';
 
 const Stack = createStackNavigator();
 
-// Stack de autenticación con ruta inicial dinámica
-const AuthStackWithInitial = ({ initialRoute }) => {
-  console.log('🔄 AuthStackWithInitial: Inicializando con initialRoute =', initialRoute);
+// Stack de autenticación (NO autenticado)
+const AuthStack = () => {
+  console.log('🔄 AuthStack: Renderizando stack de autenticación');
   
   return (
     <Stack.Navigator
-      initialRouteName={initialRoute}
+      initialRouteName="LoginScreen"
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2196F3',
@@ -68,8 +66,10 @@ const AuthStackWithInitial = ({ initialRoute }) => {
   );
 };
 
-// Stack principal (cuando el usuario está autenticado)
-const MainStack = () => {
+// Stack principal (autenticado)
+const AppStack = () => {
+  console.log('🔄 AppStack: Renderizando stack principal');
+  
   return (
     <Stack.Navigator
       initialRouteName="Home"
@@ -84,24 +84,12 @@ const MainStack = () => {
       }}
     >
       <Stack.Screen 
-        name="Home" 
-        component={HomeScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
-        name="Settings" 
-        component={SettingsScreen}
-        options={{
-          headerShown: false,
+        name="HomeScreen" 
+        component={HomeScreen} 
+        options={{ 
+          title: 'Inicio',
+          headerLeft: null, // No se puede volver atrás
+          gestureEnabled: false, // Deshabilitar gesto de vuelta
         }}
       />
     </Stack.Navigator>
@@ -112,15 +100,25 @@ const MainStack = () => {
 const AppNavigator = () => {
   const { state } = useAuth();
   const { userToken, isLoading, user } = state;
+  const [hasBootstrapped, setHasBootstrapped] = useState(false);
   
-  // Determinar si está autenticado basado en la presencia del token
-  const isAuthenticated = !!userToken;
-  
-  console.log('🔍 AppNavigator: isAuthenticated =', isAuthenticated, 'isLoading =', isLoading);
+  console.log('🔍 AppNavigator: Renderizando navegador principal');
+  console.log('🔍 AppNavigator: isLoading =', isLoading);
+  console.log('🔍 AppNavigator: hasBootstrapped =', hasBootstrapped);
   console.log('🔍 AppNavigator: userToken =', userToken ? 'existe' : 'no existe');
   console.log('👤 AppNavigator: user =', user);
 
-  if (isLoading) {
+  // Marcar como bootstrapped cuando termine la carga inicial
+  useEffect(() => {
+    if (!isLoading && !hasBootstrapped) {
+      console.log('✅ AppNavigator: Bootstrap completado');
+      setHasBootstrapped(true);
+    }
+  }, [isLoading, hasBootstrapped]);
+
+  // Pantalla de carga SOLO durante bootstrap inicial
+  if (!hasBootstrapped) {
+    console.log('⏳ AppNavigator: Mostrando pantalla de carga inicial');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
@@ -129,11 +127,14 @@ const AppNavigator = () => {
     );
   }
 
-  console.log('🚀 AppNavigator: Navegando a', isAuthenticated ? 'MainStack' : 'AuthStack');
+  // Determinar qué stack mostrar
+  const isAuthenticated = !!userToken;
+  console.log('🚀 AppNavigator: isAuthenticated =', isAuthenticated);
+  console.log('🚀 AppNavigator: Navegando a', isAuthenticated ? 'AppStack' : 'AuthStack');
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainStack /> : <AuthStackWithInitial initialRoute="LoginScreen" />}
+      {isAuthenticated ? <AppStack /> : <AuthStack />}
     </NavigationContainer>
   );
 };
