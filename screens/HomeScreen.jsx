@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
-  Alert,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -41,12 +41,20 @@ const HomeScreen = () => {
           <Ionicons name="settings-outline" size={28} color="#2196F3" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Inicio</Text>
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Ionicons name="person-circle-outline" size={28} color="#2196F3" />
-        </TouchableOpacity>
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity 
+            style={styles.profileButton}
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <Ionicons name="person-circle-outline" size={28} color="#2196F3" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={28} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -100,7 +108,15 @@ const styles = StyleSheet.create({
   settingsButton: {
     padding: 8,
   },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   profileButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  logoutButton: {
     padding: 8,
   },
   content: {
