@@ -11,6 +11,7 @@ import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import VerifyCodeScreen from '../screens/VerifyCodeScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 
@@ -83,17 +84,24 @@ const MainStack = () => {
       }}
     >
       <Stack.Screen 
-        name="HomeScreen" 
-        component={HomeScreen} 
-        options={{ 
-          title: 'Inicio'
+        name="Home" 
+        component={HomeScreen}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen 
         name="Profile" 
-        component={ProfileScreen} 
-        options={{ 
-          headerShown: false
+        component={ProfileScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

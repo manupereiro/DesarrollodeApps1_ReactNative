@@ -35,12 +35,20 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="settings-outline" size={28} color="#2196F3" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Inicio</Text>
+        <TouchableOpacity 
           style={styles.profileButton}
           onPress={() => navigation.navigate('Profile')}
         >
-          <Ionicons name="person-circle-outline" size={32} color="#333" />
+          <Ionicons name="person-circle-outline" size={28} color="#2196F3" />
         </TouchableOpacity>
       </View>
+
       <View style={styles.content}>
         <Text style={styles.title}>¡Bienvenido!</Text>
         
@@ -63,10 +71,6 @@ const HomeScreen = () => {
           <Text style={styles.featureItem}>• Historial de entregas</Text>
           <Text style={styles.featureItem}>• Notificaciones push</Text>
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -79,9 +83,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    marginTop: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  settingsButton: {
+    padding: 8,
   },
   profileButton: {
     padding: 8,
@@ -147,18 +164,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
     color: '#666',
-  },
-  logoutButton: {
-    backgroundColor: '#f44336',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 'auto',
-  },
-  logoutButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 
