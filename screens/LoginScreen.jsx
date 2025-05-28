@@ -45,6 +45,16 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2196F3" />
+        <Text style={styles.loadingText}>Creando tu cuenta...</Text>
+      </View>
+    );
+  }
+
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -159,6 +169,17 @@ const styles = StyleSheet.create({
     color: '#2196F3',
     textAlign: 'center',
     fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#555',
   },
 });
 
