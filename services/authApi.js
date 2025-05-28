@@ -1,21 +1,22 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import TokenStorage from './tokenStorage';
 
 // Configuración base de la API
-const API_BASE_URL = 'http://localhost:8080'; // Cambia esta URL por la de tu backend
+const API_BASE_URL = 'http://10.0.2.2:8080/'; // Cambia esta URL por la de tu backend
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
 // Interceptor para agregar el token a las requests
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await TokenStorage.getToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -29,7 +30,21 @@ api.interceptors.request.use(
   }
 );
 
-export const authService = {
+// Interceptor para manejar respuestas y errores globalmente
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado o inválido
+      console.log('🔒 Token expirado, limpiando almacenamiento...');
+      await TokenStorage.clearAll();
+      // Aquí podrías navegar al login si tienes acceso al navigator
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const authApi = {
   // Registro de usuario
   signup: async (userData) => {
     try {
@@ -43,12 +58,17 @@ export const authService = {
   // Login
   login: async (credentials) => {
     try {
+      console.log('🌐 authApi.login: Enviando request con credenciales:', credentials);
+      console.log('🌐 authApi.login: URL completa:', `${API_BASE_URL}auth/login`);
       const response = await api.post('/auth/login', credentials);
-      if (response.data.token) {
-        await AsyncStorage.setItem('token', response.data.token);
-      }
+      console.log('🌐 authApi.login: Response status:', response.status);
+      console.log('🌐 authApi.login: Response data:', response.data);
       return response.data;
     } catch (error) {
+      console.error('🌐 authApi.login: Error completo:', error);
+      console.error('🌐 authApi.login: Error response:', error.response);
+      console.error('🌐 authApi.login: Error response data:', error.response?.data);
+      console.error('🌐 authApi.login: Error response status:', error.response?.status);
       throw error.response?.data || { error: 'Error en el login' };
     }
   },
@@ -103,35 +123,26 @@ export const authService = {
     }
   },
 
-  // Logout
+  // Obtener perfil del usuario
+  getProfile: async () => {
+    try {
+      const response = await api.get('/auth/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Error al obtener perfil' };
+    }
+  },
+
+  // Logout (opcional, para invalidar token en el servidor)
   logout: async () => {
     try {
-      await AsyncStorage.removeItem('token');
+      const response = await api.post('/auth/logout');
+      return response.data;
     } catch (error) {
-      console.error('Error removing token:', error);
+      // No es crítico si falla
+      console.warn('Error en logout del servidor:', error);
     }
   },
-
-  // Verificar si el usuario está autenticado
-  isAuthenticated: async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      return !!token;
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      return false;
-    }
-  },
-
-  // Obtener token
-  getToken: async () => {
-    try {
-      return await AsyncStorage.getItem('token');
-    } catch (error) {
-      console.error('Error getting token:', error);
-      return null;
-    }
-  }
 };
 
-export default authService; 
+export default authApi; 

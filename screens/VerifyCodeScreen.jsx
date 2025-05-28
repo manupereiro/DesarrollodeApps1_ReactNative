@@ -39,7 +39,7 @@ const VerifyCodeScreen = ({ navigation, route }) => {
           [
             {
               text: 'OK',
-              onPress: () => navigation.navigate('ResetPassword', { email, code }),
+              onPress: () => navigation.navigate('ResetPasswordScreen', { email, code }),
             },
           ]
         );
@@ -114,14 +114,6 @@ const VerifyCodeScreen = ({ navigation, route }) => {
           disabled={isLoading}
         >
           <Text style={styles.linkText}>Reenviar código</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
-          disabled={isLoading}
-        >
-          <Text style={styles.linkText}>Volver al login</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

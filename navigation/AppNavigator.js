@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 // Importar pantallas
@@ -14,11 +15,13 @@ import HomeScreen from '../screens/HomeScreen';
 
 const Stack = createStackNavigator();
 
-// Stack de autenticación
-const AuthStack = () => {
+// Stack de autenticación con ruta inicial dinámica
+const AuthStackWithInitial = ({ initialRoute }) => {
+  console.log('🔄 AuthStackWithInitial: Inicializando con initialRoute =', initialRoute);
+  
   return (
     <Stack.Navigator
-      initialRouteName="Login"
+      initialRouteName={initialRoute}
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2196F3',
@@ -30,32 +33,32 @@ const AuthStack = () => {
       }}
     >
       <Stack.Screen 
-        name="Login" 
+        name="LoginScreen" 
         component={LoginScreen} 
         options={{ title: 'Iniciar Sesión' }}
       />
       <Stack.Screen 
-        name="Register" 
+        name="RegisterScreen" 
         component={RegisterScreen} 
         options={{ title: 'Registro' }}
       />
       <Stack.Screen 
-        name="VerifyEmail" 
+        name="VerifyEmailScreen" 
         component={VerifyEmailScreen} 
         options={{ title: 'Verificar Email' }}
       />
       <Stack.Screen 
-        name="ForgotPassword" 
+        name="ForgotPasswordScreen" 
         component={ForgotPasswordScreen} 
         options={{ title: 'Recuperar Contraseña' }}
       />
       <Stack.Screen 
-        name="VerifyCode" 
+        name="VerifyCodeScreen" 
         component={VerifyCodeScreen} 
         options={{ title: 'Verificar Código' }}
       />
       <Stack.Screen 
-        name="ResetPassword" 
+        name="ResetPasswordScreen" 
         component={ResetPasswordScreen} 
         options={{ title: 'Nueva Contraseña' }}
       />
@@ -67,7 +70,7 @@ const AuthStack = () => {
 const MainStack = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Home"
+      initialRouteName="HomeScreen"
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2196F3',
@@ -79,7 +82,7 @@ const MainStack = () => {
       }}
     >
       <Stack.Screen 
-        name="Home" 
+        name="HomeScreen" 
         component={HomeScreen} 
         options={{ title: 'Inicio' }}
       />
@@ -89,18 +92,46 @@ const MainStack = () => {
 
 // Navegador principal
 const AppNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { state } = useAuth();
+  const { userToken, isLoading, user } = state;
+  
+  // Determinar si está autenticado basado en la presencia del token
+  const isAuthenticated = !!userToken;
+  
+  console.log('🔍 AppNavigator: isAuthenticated =', isAuthenticated, 'isLoading =', isLoading);
+  console.log('🔍 AppNavigator: userToken =', userToken ? 'existe' : 'no existe');
+  console.log('👤 AppNavigator: user =', user);
 
   if (isLoading) {
-    // Aquí podrías mostrar una pantalla de carga
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2196F3" />
+        <Text style={styles.loadingText}>Cargando...</Text>
+      </View>
+    );
   }
+
+  console.log('🚀 AppNavigator: Navegando a', isAuthenticated ? 'MainStack' : 'AuthStack');
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainStack /> : <AuthStack />}
+      {isAuthenticated ? <MainStack /> : <AuthStackWithInitial initialRoute="LoginScreen" />}
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+});
 
 export default AppNavigator; 

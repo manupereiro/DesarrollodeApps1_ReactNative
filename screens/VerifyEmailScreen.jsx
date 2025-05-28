@@ -15,7 +15,10 @@ import { useAuth } from '../context/AuthContext';
 const VerifyEmailScreen = ({ navigation, route }) => {
   const { email } = route.params || {};
   const [verificationCode, setVerificationCode] = useState('');
-  const { verifyAccount, resendCode, isLoading } = useAuth();
+  const { verifyAccount, resendCode, state } = useAuth();
+
+  console.log('VerifyEmailScreen renderizada con email:', email);
+  console.log('🔍 VerifyEmailScreen: isAuthenticated =', !!state.userToken);
 
   const handleVerify = async () => {
     if (!verificationCode.trim()) {
@@ -29,19 +32,41 @@ const VerifyEmailScreen = ({ navigation, route }) => {
     }
 
     try {
-      await verifyAccount({ email, verificationCode });
-      Alert.alert(
-        'Verificación exitosa',
-        'Tu cuenta ha sido verificada correctamente',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Login'),
-          },
-        ]
-      );
+      console.log('🔄 Enviando verificación con:', { email, verificationCode });
+      const response = await verifyAccount({ email, verificationCode });
+      console.log('✅ Respuesta de verificación:', response);
+      
+      // Si la verificación incluye token, se loguea automáticamente
+      if (response.token) {
+        Alert.alert(
+          'Verificación exitosa',
+          'Tu cuenta ha sido verificada y has iniciado sesión correctamente',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // La navegación será manejada por el AuthContext automáticamente
+                console.log('🎯 Usuario logueado automáticamente después de verificación');
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Verificación exitosa',
+          'Tu cuenta ha sido verificada correctamente. Ahora puedes iniciar sesión.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('LoginScreen'),
+            },
+          ]
+        );
+      }
     } catch (error) {
-      Alert.alert('Error', error.error || 'Código de verificación inválido');
+      console.error('❌ Error en verificación:', error);
+      const errorMessage = error.error || error.message || 'Código de verificación inválido';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -55,9 +80,30 @@ const VerifyEmailScreen = ({ navigation, route }) => {
       await resendCode({ email, codeType: 'verification' });
       Alert.alert('Código reenviado', 'Se ha enviado un nuevo código a tu email');
     } catch (error) {
-      Alert.alert('Error', error.error || 'Error al reenviar código');
+      const errorMessage = error.error || error.message || 'Error al reenviar código';
+      Alert.alert('Error', errorMessage);
     }
   };
+
+  // Si no hay email, mostrar error
+  if (!email) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Error</Text>
+          <Text style={styles.subtitle}>
+            No se encontró el email. Por favor regresa al registro.
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('RegisterScreen')}
+          >
+            <Text style={styles.buttonText}>Volver al Registro</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -80,16 +126,16 @@ const VerifyEmailScreen = ({ navigation, route }) => {
             onChangeText={setVerificationCode}
             keyboardType="numeric"
             maxLength={6}
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.button, state.isLoading && styles.buttonDisabled]}
           onPress={handleVerify}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
-          {isLoading ? (
+          {state.isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>Verificar</Text>
@@ -99,18 +145,11 @@ const VerifyEmailScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.linkButton}
           onPress={handleResendCode}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>Reenviar código</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
-          disabled={isLoading}
-        >
-          <Text style={styles.linkText}>Volver al login</Text>
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );

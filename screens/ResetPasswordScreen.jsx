@@ -30,8 +30,15 @@ const ResetPasswordScreen = ({ navigation, route }) => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
+      return;
+    }
+
+    // Verificar que tenga al menos una letra
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    if (!hasLetter) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
       return;
     }
 
@@ -54,7 +61,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Login'),
+            onPress: () => navigation.navigate('LoginScreen'),
           },
         ]
       );
@@ -101,8 +108,9 @@ const ResetPasswordScreen = ({ navigation, route }) => {
 
           <View style={styles.passwordRequirements}>
             <Text style={styles.requirementsTitle}>Requisitos de la contraseña:</Text>
-            <Text style={styles.requirementText}>• Mínimo 6 caracteres</Text>
+            <Text style={styles.requirementText}>• Mínimo 8 caracteres</Text>
             <Text style={styles.requirementText}>• Debe coincidir en ambos campos</Text>
+            <Text style={styles.requirementText}>• Debe contener al menos una letra</Text>
           </View>
 
           <TouchableOpacity
@@ -115,14 +123,6 @@ const ResetPasswordScreen = ({ navigation, route }) => {
             ) : (
               <Text style={styles.buttonText}>Cambiar Contraseña</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-            disabled={isLoading}
-          >
-            <Text style={styles.linkText}>Volver al login</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -210,14 +210,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  linkButton: {
-    paddingVertical: 10,
-  },
-  linkText: {
-    color: '#2196F3',
-    textAlign: 'center',
-    fontSize: 14,
   },
 });
 

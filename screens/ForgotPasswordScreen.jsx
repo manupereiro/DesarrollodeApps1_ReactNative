@@ -36,7 +36,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('VerifyCode', { 
+            onPress: () => navigation.navigate('VerifyCodeScreen', { 
               email, 
               codeType: 'passwordReset' 
             }),
@@ -86,10 +86,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate('LoginScreen')}
           disabled={isLoading}
         >
-          <Text style={styles.linkText}>Volver al login</Text>
+          <Text style={styles.linkText}>Volver al Inicio de Sesión</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

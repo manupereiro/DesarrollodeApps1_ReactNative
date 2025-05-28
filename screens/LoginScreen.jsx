@@ -15,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading } = useAuth();
+  const { signIn, state } = useAuth();
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -24,23 +24,27 @@ const LoginScreen = ({ navigation }) => {
     }
 
     try {
-      await login({ username, password });
+      console.log('🔄 Intentando login con username:', username);
+      // Solo enviar username y password (sin detección de email)
+      const credentials = { username: username.trim(), password: password.trim() };
+      
+      await signIn(credentials);
+      console.log('✅ Login exitoso');
       // La navegación se maneja automáticamente por el contexto
     } catch (error) {
-      if (error.error === 'Account not verified') {
+      console.log('❌ Error en login:', error);
+      
+      if (error.error === 'Account not verified' || error.message === 'Account not verified') {
         Alert.alert(
           'Cuenta no verificada',
-          'Tu cuenta no ha sido verificada. ¿Deseas ir a la pantalla de verificación?',
+          'Tu cuenta no ha sido verificada. Para verificar necesitas tu email.',
           [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Verificar',
-              onPress: () => navigation.navigate('VerifyEmail', { email: username }),
-            },
+            { text: 'OK' }
           ]
         );
       } else {
-        Alert.alert('Error', error.error || 'Error al iniciar sesión');
+        const errorMessage = error.error || error.message || 'Error al iniciar sesión';
+        Alert.alert('Error', errorMessage);
       }
     }
   };
@@ -60,7 +64,7 @@ const LoginScreen = ({ navigation }) => {
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
@@ -71,16 +75,16 @@ const LoginScreen = ({ navigation }) => {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.button, state.isLoading && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
-          {isLoading ? (
+          {state.isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>Iniciar Sesión</Text>
@@ -89,16 +93,16 @@ const LoginScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('ForgotPassword')}
-          disabled={isLoading}
+          onPress={() => navigation.navigate('ForgotPasswordScreen')}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('Register')}
-          disabled={isLoading}
+          onPress={() => navigation.navigate('RegisterScreen')}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>

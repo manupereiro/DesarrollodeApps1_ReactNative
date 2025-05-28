@@ -10,7 +10,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 const HomeScreen = () => {
-  const { logout, user } = useAuth();
+  const { signOut, state } = useAuth();
+  const { user } = state;
 
   const handleLogout = () => {
     Alert.alert(
@@ -21,7 +22,7 @@ const HomeScreen = () => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: logout,
+          onPress: signOut,
         },
       ]
     );
