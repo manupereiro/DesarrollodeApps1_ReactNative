@@ -51,20 +51,14 @@ const RegisterScreen = ({ navigation }) => {
 
     try {
       console.log('🔄 RegisterScreen: Iniciando registro...');
-      await signUp({ username, email, password });
-      console.log('✅ RegisterScreen: Registro completado');
       
-      // Navegamos a la pantalla de verificación con el email
-      Alert.alert(
-        'Registro exitoso',
-        'Tu cuenta ha sido creada. Por favor verifica tu email.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('VerifyEmailScreen', { email }),
-          },
-        ]
-      );
+      const response = await signUp({ username, email, password });
+      console.log('✅ RegisterScreen: Registro completado exitosamente:', response);
+      
+      // Navegación directa e inmediata
+      console.log('🔄 RegisterScreen: Navegando a VerifyEmailScreen con email:', email);
+      navigation.navigate('VerifyEmailScreen', { email });
+      console.log('✅ RegisterScreen: Navegación ejecutada correctamente');
       
     } catch (error) {
       console.log('❌ RegisterScreen: Error durante registro:', error);
