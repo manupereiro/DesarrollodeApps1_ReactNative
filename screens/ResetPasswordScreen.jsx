@@ -17,7 +17,10 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   const { email, code } = route.params || {};
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { resetPassword, isLoading } = useAuth();
+  const { resetPassword, state } = useAuth();
+
+  console.log('ResetPasswordScreen renderizada con:', { email, code });
+  console.log('🔍 ResetPasswordScreen: isAuthenticated =', !!state.userToken);
 
   const handleResetPassword = async () => {
     if (!newPassword.trim() || !confirmPassword.trim()) {
@@ -48,12 +51,14 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     }
 
     try {
-      await resetPassword({
+      console.log('🔄 ResetPasswordScreen: Restableciendo contraseña...');
+      const response = await resetPassword({
         email,
         code,
         newPassword,
         confirmPassword,
       });
+      console.log('✅ ResetPasswordScreen: Contraseña restablecida exitosamente:', response);
       
       Alert.alert(
         'Contraseña restablecida',
@@ -61,14 +66,38 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('LoginScreen'),
+            onPress: () => {
+              console.log('🔄 ResetPasswordScreen: Navegando a LoginScreen');
+              navigation.navigate('LoginScreen');
+            },
           },
         ]
       );
     } catch (error) {
+      console.log('❌ ResetPasswordScreen: Error restableciendo contraseña:', error);
       Alert.alert('Error', error.error || 'Error al restablecer contraseña');
     }
   };
+
+  // Si no hay email o código, mostrar error
+  if (!email || !code) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Error</Text>
+          <Text style={styles.subtitle}>
+            Información de verificación no encontrada. Por favor intenta el proceso desde el inicio.
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('ForgotPasswordScreen')}
+          >
+            <Text style={styles.buttonText}>Volver a Recuperar Contraseña</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -91,7 +120,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
@@ -102,7 +131,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
@@ -114,11 +143,11 @@ const ResetPasswordScreen = ({ navigation, route }) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+            style={[styles.button, state.isLoading && styles.buttonDisabled]}
             onPress={handleResetPassword}
-            disabled={isLoading}
+            disabled={state.isLoading}
           >
-            {isLoading ? (
+            {state.isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>Cambiar Contraseña</Text>
