@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const { forgotPassword, isLoading } = useAuth();
+  const { forgotPassword, state } = useAuth();
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -29,21 +29,20 @@ const ForgotPasswordScreen = ({ navigation }) => {
     }
 
     try {
-      await forgotPassword(email);
-      Alert.alert(
-        'Código enviado',
-        'Se ha enviado un código de recuperación a tu email',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('VerifyCodeScreen', { 
-              email, 
-              codeType: 'passwordReset' 
-            }),
-          },
-        ]
-      );
+      console.log('🔄 ForgotPasswordScreen: Enviando código a:', email);
+      const response = await forgotPassword(email);
+      console.log('✅ ForgotPasswordScreen: Código enviado, respuesta:', response);
+      
+      // Navegación directa SIN setTimeout ni Alert
+      console.log('🔄 ForgotPasswordScreen: Navegando INMEDIATAMENTE a VerifyCodeScreen');
+      navigation.navigate('VerifyCodeScreen', { 
+        email, 
+        codeType: 'passwordReset' 
+      });
+      console.log('✅ ForgotPasswordScreen: Navegación ejecutada');
+      
     } catch (error) {
+      console.log('❌ ForgotPasswordScreen: Error enviando código:', error);
       Alert.alert('Error', error.error || 'Error al enviar código de recuperación');
     }
   };
@@ -68,16 +67,16 @@ const ForgotPasswordScreen = ({ navigation }) => {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.button, state.isLoading && styles.buttonDisabled]}
           onPress={handleForgotPassword}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
-          {isLoading ? (
+          {state.isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>Enviar Código</Text>
@@ -87,7 +86,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.linkButton}
           onPress={() => navigation.navigate('LoginScreen')}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>Volver al Inicio de Sesión</Text>
         </TouchableOpacity>
