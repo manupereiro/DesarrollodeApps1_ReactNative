@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
+import OrderDetailsScreen from '../screens/OrderDetailsScreen';
+import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
@@ -103,6 +105,16 @@ const AppStack = () => {
         name="Settings" 
         component={SettingsScreen} 
         options={{ title: 'Configuración' }}
+      />
+      <Stack.Screen 
+        name="OrderHistory" 
+        component={OrderHistoryScreen} 
+        options={{ title: 'Historial de Pedidos' }}
+      />
+      <Stack.Screen 
+        name="OrderDetails" 
+        component={OrderDetailsScreen} 
+        options={{ title: 'Detalles del Pedido' }}
       />
     </Stack.Navigator>
   );

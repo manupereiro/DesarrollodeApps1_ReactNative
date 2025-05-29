@@ -221,7 +221,10 @@ const ProfileScreen = ({ navigation }) => {
                   </View>
                 </View>
 
-                <TouchableOpacity style={styles.trackButton}>
+                <TouchableOpacity 
+                  style={styles.trackButton}
+                  onPress={() => handleOrderPress(order.id)}
+                >
                   <Text style={styles.trackButtonText}>Ver Detalles</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
