@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import authService from '../services/authService';
 
 // Estados iniciales
@@ -80,28 +80,48 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthState = async () => {
     try {
+      console.log('AuthContext: Verificando estado de autenticación...');
       const token = await AsyncStorage.getItem('token');
+      console.log('AuthContext: Token encontrado en checkAuthState:', {
+        exists: !!token,
+        length: token?.length,
+        parts: token ? token.split('.') : null,
+        decodedPayload: token ? JSON.parse(atob(token.split('.')[1])) : null
+      });
+
       if (token) {
         // Aquí podrías hacer una llamada al backend para verificar si el token es válido
+        console.log('AuthContext: Token válido, actualizando estado...');
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: { token, user: null },
         });
       } else {
+        console.log('AuthContext: No se encontró token, limpiando estado...');
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       }
     } catch (error) {
-      console.error('Error checking auth state:', error);
+      console.error('AuthContext: Error al verificar estado de autenticación:', {
+        error: error.message,
+        stack: error.stack
+      });
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
     }
   };
 
   const login = async (credentials) => {
     try {
-      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.login(credentials);
+      if (!credentials.username || !credentials.password) {
+        throw new Error('Usuario y contraseña son requeridos');
+      }
       
-      // Guardar token en AsyncStorage
+      console.log('AuthContext: Iniciando login con username:', credentials.username);
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+      
+      // Llamar a authService.login con los parámetros separados
+      const response = await authService.login(credentials.username, credentials.password);
+      
+      console.log('AuthContext: Login exitoso, guardando token...');
       await AsyncStorage.setItem('token', response.token);
       
       dispatch({
@@ -112,8 +132,10 @@ export const AuthProvider = ({ children }) => {
         },
       });
       
+      console.log('AuthContext: Login completado exitosamente');
       return response;
     } catch (error) {
+      console.error('AuthContext: Error en login:', error);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       throw error;
     }

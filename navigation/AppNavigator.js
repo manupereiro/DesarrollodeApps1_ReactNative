@@ -1,19 +1,25 @@
-import React from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useAuth } from '../context/AuthContext';
+import React from 'react';
 import LoadingScreen from '../components/LoadingScreen';
+import { useAuth } from '../context/AuthContext';
 
 // Importar pantallas
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import VerifyEmailScreen from '../screens/VerifyEmailScreen';
+import AvailableRoutes from '../screens/AvailableRoutes';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import VerifyCodeScreen from '../screens/VerifyCodeScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
+import LoginScreen from '../screens/LoginScreen';
+import MyRoutes from '../screens/MyRoutes';
+import RegisterScreen from '../screens/RegisterScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import RoutesScreen from '../screens/RoutesScreen';
+import VerifyCodeScreen from '../screens/VerifyCodeScreen';
+import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
 // Stack de autenticación
 const AuthStack = () => {
@@ -64,11 +70,55 @@ const AuthStack = () => {
   );
 };
 
+// Tabs principales (cuando el usuario está autenticado)
+const MainTabs = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: '#2196F3',
+        tabBarInactiveTintColor: '#757575',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#e0e0e0',
+        },
+        headerStyle: {
+          backgroundColor: '#2196F3',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Inicio',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Routes"
+        component={RoutesScreen}
+        options={{
+          title: 'Rutas',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="local-shipping" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
 // Stack principal (cuando el usuario está autenticado)
 const MainStack = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Home"
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2196F3',
@@ -80,9 +130,19 @@ const MainStack = () => {
       }}
     >
       <Stack.Screen 
-        name="Home" 
-        component={HomeScreen} 
-        options={{ title: 'Inicio' }}
+        name="MainTabs" 
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="AvailableRoutes" 
+        component={AvailableRoutes}
+        options={{ title: 'Rutas Disponibles' }}
+      />
+      <Stack.Screen 
+        name="MyRoutes" 
+        component={MyRoutes}
+        options={{ title: 'Mis Rutas' }}
       />
     </Stack.Navigator>
   );

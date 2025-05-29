@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,9 +24,11 @@ const LoginScreen = ({ navigation }) => {
     }
 
     try {
+      console.log('LoginScreen: Intentando login con username:', username);
       await login({ username, password });
       // La navegación se maneja automáticamente por el contexto
     } catch (error) {
+      console.error('LoginScreen: Error en login:', error);
       if (error.error === 'Account not verified') {
         Alert.alert(
           'Cuenta no verificada',
@@ -49,11 +51,10 @@ const LoginScreen = ({ navigation }) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Creando tu cuenta...</Text>
+        <Text style={styles.loadingText}>Iniciando sesión...</Text>
       </View>
     );
   }
-
 
   return (
     <KeyboardAvoidingView
