@@ -1,17 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 // Importar pantallas
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import VerifyCodeScreen from '../screens/VerifyCodeScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
+import LoginScreen from '../screens/LoginScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import VerifyCodeScreen from '../screens/VerifyCodeScreen';
+import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 
 const Stack = createStackNavigator();
 
@@ -72,7 +74,7 @@ const AppStack = () => {
   
   return (
     <Stack.Navigator
-      initialRouteName="Home"
+      initialRouteName="HomeScreen"
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2196F3',
@@ -91,6 +93,16 @@ const AppStack = () => {
           headerLeft: null, // No se puede volver atrás
           gestureEnabled: false, // Deshabilitar gesto de vuelta
         }}
+      />
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ title: 'Mi Perfil' }}
+      />
+      <Stack.Screen 
+        name="Settings" 
+        component={SettingsScreen} 
+        options={{ title: 'Configuración' }}
       />
     </Stack.Navigator>
   );

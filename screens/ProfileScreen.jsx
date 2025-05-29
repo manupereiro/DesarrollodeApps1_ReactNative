@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -9,42 +11,119 @@ import {
   View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import profileApi from '../services/profileApi';
 
 const ProfileScreen = ({ navigation }) => {
   const { state } = useAuth();
   const { user } = state;
-
-  // Mock data for recent orders
-  const recentOrders = [
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [error, setError] = useState(null);
+  // Datos hardcodeados para pedidos recientes
+  const [recentOrders] = useState([
     {
       id: 1,
-      date: '15 Mar 2024',
+      date: '2024-03-15',
       status: 'Entregado',
+      address: 'Av. Siempreviva 742, Springfield',
       items: 3,
-      total: '$1,250.00',
-      address: 'Av. Reforma 123, CDMX',
+      total: 1500.00
     },
     {
       id: 2,
-      date: '10 Mar 2024',
-      status: 'En proceso',
+      date: '2024-03-10',
+      status: 'En Proceso',
+      address: 'Calle Falsa 123, Springfield',
       items: 2,
-      total: '$850.00',
-      address: 'Calle Juárez 456, CDMX',
-    },
-    {
-      id: 3,
-      date: '05 Mar 2024',
-      status: 'Entregado',
-      items: 4,
-      total: '$2,100.00',
-      address: 'Paseo de la Reforma 789, CDMX',
-    },
-  ];
+      total: 850.50
+    }
+  ]);
+
+  useEffect(() => {
+    loadProfileData();
+  }, []);
+
+  const loadProfileData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const profileData = await profileApi.getProfile();
+      setProfile(profileData);
+    } catch (err) {
+      console.error('Error cargando datos del perfil:', err);
+      setError(err.message || 'Error al cargar los datos');
+      Alert.alert(
+        'Error',
+        'No se pudieron cargar los datos del perfil. Por favor, intenta de nuevo.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    loadProfileData();
+  };
+
+  const handleOrderPress = (orderId) => {
+    navigation.navigate('OrderDetails', { orderId });
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Mi Perfil</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          <Text style={styles.loadingText}>Cargando perfil...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Mi Perfil</Text>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+          >
+            <Ionicons name="refresh" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#f44336" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={handleRefresh}
+          >
+            <Text style={styles.retryButtonText}>Intentar de nuevo</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -53,11 +132,15 @@ const ProfileScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mi Perfil</Text>
-        <View style={styles.headerRight} />
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+        >
+          <Ionicons name="refresh" size={24} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -69,77 +152,81 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>Juan Pérez</Text>
+            <Text style={styles.userName}>{profile?.username || 'Usuario'}</Text>
             
             <View style={styles.infoContainer}>
               <View style={styles.infoRow}>
                 <Ionicons name="mail-outline" size={20} color="#fff" style={styles.infoIcon} />
-                <Text style={styles.userEmail}>juan.perez@email.com</Text>
-              </View>
-              
-              <View style={styles.infoRow}>
-                <Ionicons name="call-outline" size={20} color="#fff" style={styles.infoIcon} />
-                <Text style={styles.userPhone}>+52 55 1234 5678</Text>
-              </View>
-              
-              <View style={styles.infoRow}>
-                <Ionicons name="location-outline" size={20} color="#fff" style={styles.infoIcon} />
-                <Text style={styles.userAddress}>Av. Reforma 123, CDMX</Text>
+                <Text style={styles.userEmail}>{profile?.email || 'No disponible'}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Recent Orders */}
+        {/* Recent Orders Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Pedidos Recientes</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => navigation.navigate('OrderHistory')}
+            >
               <Text style={styles.seeAllButtonText}>Ver todos</Text>
               <Ionicons name="chevron-forward" size={16} color="#2196F3" />
             </TouchableOpacity>
           </View>
 
-          {recentOrders.map((order) => (
-            <View key={order.id} style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <View>
-                  <Text style={styles.orderNumber}>Pedido #{order.id}</Text>
-                  <Text style={styles.orderDate}>{order.date}</Text>
-                </View>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: order.status === 'Entregado' ? '#E8F5E9' : '#FFF3E0' }
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    { color: order.status === 'Entregado' ? '#2E7D32' : '#EF6C00' }
-                  ]}>
-                    {order.status}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.orderDetails}>
-                <View style={styles.detailRow}>
-                  <Ionicons name="location-outline" size={16} color="#666" />
-                  <Text style={styles.detailText} numberOfLines={1}>{order.address}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="cube-outline" size={16} color="#666" />
-                  <Text style={styles.detailText}>{order.items} items</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="cash-outline" size={16} color="#666" />
-                  <Text style={styles.detailText}>{order.total}</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.trackButton}>
-                <Text style={styles.trackButtonText}>Ver Detalles</Text>
-              </TouchableOpacity>
+          {recentOrders.length === 0 ? (
+            <View style={styles.emptyOrdersContainer}>
+              <Ionicons name="receipt-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyOrdersText}>No hay pedidos recientes</Text>
             </View>
-          ))}
+          ) : (
+            recentOrders.map((order) => (
+              <TouchableOpacity 
+                key={order.id} 
+                style={styles.orderCard}
+                onPress={() => handleOrderPress(order.id)}
+              >
+                <View style={styles.orderHeader}>
+                  <View>
+                    <Text style={styles.orderNumber}>Pedido #{order.id}</Text>
+                    <Text style={styles.orderDate}>{new Date(order.date).toLocaleDateString()}</Text>
+                  </View>
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: order.status === 'Entregado' ? '#E8F5E9' : '#FFF3E0' }
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      { color: order.status === 'Entregado' ? '#2E7D32' : '#EF6C00' }
+                    ]}>
+                      {order.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.orderDetails}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="location-outline" size={16} color="#666" />
+                    <Text style={styles.detailText} numberOfLines={1}>{order.address}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="cube-outline" size={16} color="#666" />
+                    <Text style={styles.detailText}>{order.items} items</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="cash-outline" size={16} color="#666" />
+                    <Text style={styles.detailText}>${order.total.toFixed(2)}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.trackButton}>
+                  <Text style={styles.trackButtonText}>Ver Detalles</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -169,6 +256,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+  },
+  refreshButton: {
+    padding: 8,
   },
   content: {
     flex: 1,
@@ -268,17 +358,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
-  userPhone: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  userAddress: {
+  loadingText: {
+    marginTop: 10,
     fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
+    color: '#666',
+  },
+  errorContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#f44336',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   section: {
     padding: 16,
@@ -377,6 +490,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  emptyOrdersContainer: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  emptyOrdersText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  }
 });
 
 export default ProfileScreen; 
