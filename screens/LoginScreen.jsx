@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,22 +25,17 @@ const LoginScreen = ({ navigation }) => {
 
     try {
       console.log('🔄 Intentando login con username:', username);
-      // Solo enviar username y password (sin detección de email)
       const credentials = { username: username.trim(), password: password.trim() };
-      
       await signIn(credentials);
       console.log('✅ Login exitoso');
-      // La navegación se maneja automáticamente por el contexto
+      // Navegación se maneja por el contexto
     } catch (error) {
       console.log('❌ Error en login:', error);
-      
       if (error.error === 'Account not verified' || error.message === 'Account not verified') {
         Alert.alert(
           'Cuenta no verificada',
           'Tu cuenta no ha sido verificada. Para verificar necesitas tu email.',
-          [
-            { text: 'OK' }
-          ]
+          [{ text: 'OK' }]
         );
       } else {
         const errorMessage = error.error || error.message || 'Error al iniciar sesión';
@@ -49,14 +44,19 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  return (
+  return state.isLoading ? (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#2196F3" />
+      <Text style={styles.loadingText}>Iniciando sesión...</Text>
+    </View>
+  ) : (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
         <Text style={styles.title}>Iniciar Sesión</Text>
-        
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -93,7 +93,7 @@ const LoginScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('ForgotPasswordScreen')}
+          onPress={() => navigation.navigate('ForgotPassword')}
           disabled={state.isLoading}
         >
           <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
@@ -101,7 +101,7 @@ const LoginScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('RegisterScreen')}
+          onPress={() => navigation.navigate('Register')}
           disabled={state.isLoading}
         >
           <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
@@ -164,6 +164,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#555',
+  },
 });
 
-export default LoginScreen; 
+export default LoginScreen;

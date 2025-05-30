@@ -2,7 +2,7 @@ import axios from 'axios';
 import TokenStorage from './tokenStorage';
 
 // Configuración base de la API
-const API_BASE_URL = 'http://10.0.2.2:8080/'; // Cambia esta URL por la de tu backend
+const API_BASE_URL = 'http://10.0.2.2:8080';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,16 +12,26 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Interceptor para agregar el token a las requests
+// Interceptor para agregar token a las requests
 api.interceptors.request.use(
   async (config) => {
     try {
       const token = await TokenStorage.getToken();
       if (token) {
+        const tokenParts = token.split('.');
+        console.log('🔐 Token encontrado:', {
+          header: tokenParts[0],
+          payload: tokenParts[1],
+          signature: tokenParts[2] ? 'Presente' : 'Ausente',
+          length: token.length,
+        });
+
         config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.log('⚠️ No se encontró token para la petición');
       }
     } catch (error) {
-      console.error('Error getting token:', error);
+      console.error('❌ Error en interceptor de request:', error);
     }
     return config;
   },
@@ -30,22 +40,35 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar respuestas y errores globalmente
+// Interceptor de respuesta
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Respuesta recibida:', {
+      url: response.config.url,
+      status: response.status,
+    });
+    return response;
+  },
   async (error) => {
+    console.error('❌ Error en respuesta:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+
     if (error.response?.status === 401) {
-      // Token expirado o inválido
       console.log('🔒 Token expirado, limpiando almacenamiento...');
       await TokenStorage.clearAll();
-      // Aquí podrías navegar al login si tienes acceso al navigator
+      // Aquí podrías redirigir al login si es necesario
     }
+
     return Promise.reject(error);
   }
 );
 
+// Funciones de autenticación
 export const authApi = {
-  // Registro de usuario
   signup: async (userData) => {
     try {
       const response = await api.post('/auth/signup', userData);
@@ -55,25 +78,18 @@ export const authApi = {
     }
   },
 
-  // Login
   login: async (credentials) => {
     try {
-      console.log('🌐 authApi.login: Enviando request con credenciales:', credentials);
-      console.log('🌐 authApi.login: URL completa:', `${API_BASE_URL}auth/login`);
+      console.log('🔐 authApi.login:', credentials);
       const response = await api.post('/auth/login', credentials);
-      console.log('🌐 authApi.login: Response status:', response.status);
-      console.log('🌐 authApi.login: Response data:', response.data);
+      console.log('🔐 Login exitoso:', response.data);
       return response.data;
     } catch (error) {
-      console.error('🌐 authApi.login: Error completo:', error);
-      console.error('🌐 authApi.login: Error response:', error.response);
-      console.error('🌐 authApi.login: Error response data:', error.response?.data);
-      console.error('🌐 authApi.login: Error response status:', error.response?.status);
+      console.error('❌ authApi.login Error:', error.response?.data || error.message);
       throw error.response?.data || { error: 'Error en el login' };
     }
   },
 
-  // Verificación de cuenta
   verifyAccount: async (verificationData) => {
     try {
       const response = await api.post('/auth/verify', verificationData);
@@ -83,7 +99,6 @@ export const authApi = {
     }
   },
 
-  // Reenvío de código
   resendCode: async (resendData) => {
     try {
       const response = await api.post('/auth/resend', resendData);
@@ -93,7 +108,6 @@ export const authApi = {
     }
   },
 
-  // Solicitar código de recuperación de contraseña
   forgotPassword: async (email) => {
     try {
       const response = await api.post('/auth/forgot-password', { email });
@@ -103,7 +117,6 @@ export const authApi = {
     }
   },
 
-  // Verificar código de recuperación
   verifyResetCode: async (verificationData) => {
     try {
       const response = await api.post('/auth/verify-reset-code', verificationData);
@@ -113,7 +126,6 @@ export const authApi = {
     }
   },
 
-  // Restablecer contraseña
   resetPassword: async (resetData) => {
     try {
       const response = await api.post('/auth/reset-password', resetData);
@@ -123,7 +135,6 @@ export const authApi = {
     }
   },
 
-  // Obtener perfil del usuario
   getProfile: async () => {
     try {
       const response = await api.get('/auth/profile');
@@ -133,16 +144,14 @@ export const authApi = {
     }
   },
 
-  // Logout (opcional, para invalidar token en el servidor)
   logout: async () => {
     try {
       const response = await api.post('/auth/logout');
       return response.data;
     } catch (error) {
-      // No es crítico si falla
-      console.warn('Error en logout del servidor:', error);
+      console.warn('⚠️ Error en logout:', error.message);
     }
   },
 };
 
-export default authApi; 
+export default authApi;

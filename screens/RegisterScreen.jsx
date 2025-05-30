@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CommonActions } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -31,14 +32,7 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
 
-    if (password.length < 8) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
-      return;
-    }
-
-    // Verificar que tenga al menos una letra
-    const hasLetter = /[a-zA-Z]/.test(password);
-    if (!hasLetter) {
+    if (password.length < 8 || !/[a-zA-Z]/.test(password)) {
       Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
       return;
     }
@@ -51,15 +45,12 @@ const RegisterScreen = ({ navigation }) => {
 
     try {
       console.log('🔄 RegisterScreen: Iniciando registro...');
-      
       const response = await signUp({ username, email, password });
       console.log('✅ RegisterScreen: Registro completado exitosamente:', response);
-      
-      // Navegación directa e inmediata
+
       console.log('🔄 RegisterScreen: Navegando a VerifyEmailScreen con email:', email);
       navigation.navigate('VerifyEmailScreen', { email });
       console.log('✅ RegisterScreen: Navegación ejecutada correctamente');
-      
     } catch (error) {
       console.log('❌ RegisterScreen: Error durante registro:', error);
       const errorMessage = error.error || error.message || 'Error al registrar usuario';
@@ -205,4 +196,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RegisterScreen; 
+export default RegisterScreen;
