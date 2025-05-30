@@ -17,7 +17,10 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   const { email, code } = route.params || {};
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { resetPassword, isLoading } = useAuth();
+  const { resetPassword, state } = useAuth();
+
+  console.log('ResetPasswordScreen renderizada con:', { email, code });
+  console.log('🔍 ResetPasswordScreen: isAuthenticated =', !!state.userToken);
 
   const handleResetPassword = async () => {
     if (!newPassword.trim() || !confirmPassword.trim()) {
@@ -30,8 +33,15 @@ const ResetPasswordScreen = ({ navigation, route }) => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
+      return;
+    }
+
+    // Verificar que tenga al menos una letra
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    if (!hasLetter) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
       return;
     }
 
@@ -41,12 +51,14 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     }
 
     try {
-      await resetPassword({
+      console.log('🔄 ResetPasswordScreen: Restableciendo contraseña...');
+      const response = await resetPassword({
         email,
         code,
         newPassword,
         confirmPassword,
       });
+      console.log('✅ ResetPasswordScreen: Contraseña restablecida exitosamente:', response);
       
       Alert.alert(
         'Contraseña restablecida',
@@ -54,14 +66,38 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Login'),
+            onPress: () => {
+              console.log('🔄 ResetPasswordScreen: Navegando a LoginScreen');
+              navigation.navigate('LoginScreen');
+            },
           },
         ]
       );
     } catch (error) {
+      console.log('❌ ResetPasswordScreen: Error restableciendo contraseña:', error);
       Alert.alert('Error', error.error || 'Error al restablecer contraseña');
     }
   };
+
+  // Si no hay email o código, mostrar error
+  if (!email || !code) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Error</Text>
+          <Text style={styles.subtitle}>
+            Información de verificación no encontrada. Por favor intenta el proceso desde el inicio.
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('ForgotPasswordScreen')}
+          >
+            <Text style={styles.buttonText}>Volver a Recuperar Contraseña</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -84,7 +120,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
@@ -95,34 +131,27 @@ const ResetPasswordScreen = ({ navigation, route }) => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
           <View style={styles.passwordRequirements}>
             <Text style={styles.requirementsTitle}>Requisitos de la contraseña:</Text>
-            <Text style={styles.requirementText}>• Mínimo 6 caracteres</Text>
+            <Text style={styles.requirementText}>• Mínimo 8 caracteres</Text>
             <Text style={styles.requirementText}>• Debe coincidir en ambos campos</Text>
+            <Text style={styles.requirementText}>• Debe contener al menos una letra</Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+            style={[styles.button, state.isLoading && styles.buttonDisabled]}
             onPress={handleResetPassword}
-            disabled={isLoading}
+            disabled={state.isLoading}
           >
-            {isLoading ? (
+            {state.isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>Cambiar Contraseña</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-            disabled={isLoading}
-          >
-            <Text style={styles.linkText}>Volver al login</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -210,14 +239,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  linkButton: {
-    paddingVertical: 10,
-  },
-  linkText: {
-    color: '#2196F3',
-    textAlign: 'center',
-    fontSize: 14,
   },
 });
 

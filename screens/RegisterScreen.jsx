@@ -19,7 +19,7 @@ const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { signup, isLoading } = useAuth();
+  const { signUp, state } = useAuth();
 
   const handleRegister = async () => {
     if (!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
@@ -32,8 +32,8 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 8 || !/[a-zA-Z]/.test(password)) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y contener al menos una letra');
       return;
     }
 
@@ -44,13 +44,17 @@ const RegisterScreen = ({ navigation }) => {
     }
 
     try {
-      await signup({ username, email, password });
-      Alert.alert(
-        'Registro exitoso',
-        'Tu cuenta ha sido creada. Por favor verifica tu email.',
-      );
+      console.log('🔄 RegisterScreen: Iniciando registro...');
+      const response = await signUp({ username, email, password });
+      console.log('✅ RegisterScreen: Registro completado exitosamente:', response);
+
+      console.log('🔄 RegisterScreen: Navegando a VerifyEmailScreen con email:', email);
+      navigation.navigate('VerifyEmailScreen', { email });
+      console.log('✅ RegisterScreen: Navegación ejecutada correctamente');
     } catch (error) {
-      Alert.alert('Error', error.error || 'Error al registrar usuario');
+      console.log('❌ RegisterScreen: Error durante registro:', error);
+      const errorMessage = error.error || error.message || 'Error al registrar usuario';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -70,7 +74,7 @@ const RegisterScreen = ({ navigation }) => {
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
@@ -82,7 +86,7 @@ const RegisterScreen = ({ navigation }) => {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
@@ -93,7 +97,7 @@ const RegisterScreen = ({ navigation }) => {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
@@ -104,16 +108,16 @@ const RegisterScreen = ({ navigation }) => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
-              editable={!isLoading}
+              editable={!state.isLoading}
             />
           </View>
 
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+            style={[styles.button, state.isLoading && styles.buttonDisabled]}
             onPress={handleRegister}
-            disabled={isLoading}
+            disabled={state.isLoading}
           >
-            {isLoading ? (
+            {state.isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>Registrarse</Text>
@@ -122,8 +126,8 @@ const RegisterScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-            disabled={isLoading}
+            onPress={() => navigation.navigate('LoginScreen')}
+            disabled={state.isLoading}
           >
             <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia sesión</Text>
           </TouchableOpacity>
@@ -192,4 +196,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RegisterScreen; 
+export default RegisterScreen;

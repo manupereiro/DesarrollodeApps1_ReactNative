@@ -15,7 +15,10 @@ import { useAuth } from '../context/AuthContext';
 const VerifyCodeScreen = ({ navigation, route }) => {
   const { email, codeType } = route.params || {};
   const [code, setCode] = useState('');
-  const { verifyResetCode, resendCode, isLoading } = useAuth();
+  const { verifyResetCode, resendCode, state } = useAuth();
+
+  console.log('VerifyCodeScreen renderizada con:', { email, codeType });
+  console.log('🔍 VerifyCodeScreen: isAuthenticated =', !!state.userToken);
 
   const isPasswordReset = codeType === 'passwordReset';
 
@@ -31,20 +34,18 @@ const VerifyCodeScreen = ({ navigation, route }) => {
     }
 
     try {
+      console.log('🔄 VerifyCodeScreen: Verificando código...');
       if (isPasswordReset) {
-        await verifyResetCode({ email, code });
-        Alert.alert(
-          'Código verificado',
-          'Ahora puedes cambiar tu contraseña',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('ResetPassword', { email, code }),
-            },
-          ]
-        );
+        const response = await verifyResetCode({ email, code });
+        console.log('✅ VerifyCodeScreen: Código verificado exitosamente:', response);
+        
+        // Navegación directa e inmediata
+        console.log('🔄 VerifyCodeScreen: Navegando a ResetPasswordScreen con email:', email);
+        navigation.navigate('ResetPasswordScreen', { email, code });
+        console.log('✅ VerifyCodeScreen: Navegación ejecutada correctamente');
       }
     } catch (error) {
+      console.log('❌ VerifyCodeScreen: Error verificando código:', error);
       Alert.alert('Error', error.error || 'Código inválido');
     }
   };
@@ -56,9 +57,12 @@ const VerifyCodeScreen = ({ navigation, route }) => {
     }
 
     try {
+      console.log('🔄 VerifyCodeScreen: Reenviando código...');
       await resendCode({ email, codeType });
+      console.log('✅ VerifyCodeScreen: Código reenviado exitosamente');
       Alert.alert('Código reenviado', 'Se ha enviado un nuevo código a tu email');
     } catch (error) {
+      console.log('❌ VerifyCodeScreen: Error reenviando código:', error);
       Alert.alert('Error', error.error || 'Error al reenviar código');
     }
   };
@@ -72,6 +76,26 @@ const VerifyCodeScreen = ({ navigation, route }) => {
       ? 'Ingresa el código de recuperación que enviamos a tu email'
       : 'Ingresa el código de verificación que enviamos a tu email';
   };
+
+  // Si no hay email, mostrar error
+  if (!email) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Error</Text>
+          <Text style={styles.subtitle}>
+            No se encontró el email. Por favor regresa e intenta nuevamente.
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('ForgotPasswordScreen')}
+          >
+            <Text style={styles.buttonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -92,16 +116,16 @@ const VerifyCodeScreen = ({ navigation, route }) => {
             onChangeText={setCode}
             keyboardType="numeric"
             maxLength={6}
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.button, state.isLoading && styles.buttonDisabled]}
           onPress={handleVerifyCode}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
-          {isLoading ? (
+          {state.isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>Verificar Código</Text>
@@ -111,17 +135,9 @@ const VerifyCodeScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.linkButton}
           onPress={handleResendCode}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>Reenviar código</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
-          disabled={isLoading}
-        >
-          <Text style={styles.linkText}>Volver al login</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

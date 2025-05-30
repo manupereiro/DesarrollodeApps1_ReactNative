@@ -1,16 +1,20 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  SafeAreaView,
+    Alert,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 const HomeScreen = () => {
-  const { logout, user } = useAuth();
+  const { signOut, state } = useAuth();
+  const { user } = state;
+  const navigation = useNavigation();
 
   const handleLogout = () => {
     Alert.alert(
@@ -21,7 +25,7 @@ const HomeScreen = () => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: logout,
+          onPress: signOut,
         },
       ]
     );
@@ -29,6 +33,24 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="settings-outline" size={28} color="#2196F3" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Inicio</Text>
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity 
+            style={styles.profileButton}
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <Ionicons name="person-circle-outline" size={28} color="#2196F3" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.content}>
         <Text style={styles.title}>¡Bienvenido!</Text>
         
@@ -51,10 +73,6 @@ const HomeScreen = () => {
           <Text style={styles.featureItem}>• Historial de entregas</Text>
           <Text style={styles.featureItem}>• Notificaciones push</Text>
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -64,6 +82,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    marginTop: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  settingsButton: {
+    padding: 8,
+  },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  logoutButton: {
+    padding: 8,
   },
   content: {
     flex: 1,
@@ -126,18 +174,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
     color: '#666',
-  },
-  logoutButton: {
-    backgroundColor: '#f44336',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 'auto',
-  },
-  logoutButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

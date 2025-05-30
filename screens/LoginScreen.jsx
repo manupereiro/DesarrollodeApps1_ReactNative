@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading } = useAuth();
+  const { signIn, state } = useAuth();
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -24,46 +24,39 @@ const LoginScreen = ({ navigation }) => {
     }
 
     try {
-      console.log('LoginScreen: Intentando login con username:', username);
-      await login({ username, password });
-      // La navegación se maneja automáticamente por el contexto
+      console.log('🔄 Intentando login con username:', username);
+      const credentials = { username: username.trim(), password: password.trim() };
+      await signIn(credentials);
+      console.log('✅ Login exitoso');
+      // Navegación se maneja por el contexto
     } catch (error) {
-      console.error('LoginScreen: Error en login:', error);
-      if (error.error === 'Account not verified') {
+      console.log('❌ Error en login:', error);
+      if (error.error === 'Account not verified' || error.message === 'Account not verified') {
         Alert.alert(
           'Cuenta no verificada',
-          'Tu cuenta no ha sido verificada. ¿Deseas ir a la pantalla de verificación?',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Verificar',
-              onPress: () => navigation.navigate('VerifyEmail', { email: username }),
-            },
-          ]
+          'Tu cuenta no ha sido verificada. Para verificar necesitas tu email.',
+          [{ text: 'OK' }]
         );
       } else {
-        Alert.alert('Error', error.error || 'Error al iniciar sesión');
+        const errorMessage = error.error || error.message || 'Error al iniciar sesión';
+        Alert.alert('Error', errorMessage);
       }
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Iniciando sesión...</Text>
-      </View>
-    );
-  }
-
-  return (
+  return state.isLoading ? (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#2196F3" />
+      <Text style={styles.loadingText}>Iniciando sesión...</Text>
+    </View>
+  ) : (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
         <Text style={styles.title}>Iniciar Sesión</Text>
-        
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -71,7 +64,7 @@ const LoginScreen = ({ navigation }) => {
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
@@ -82,16 +75,16 @@ const LoginScreen = ({ navigation }) => {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            editable={!isLoading}
+            editable={!state.isLoading}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.button, state.isLoading && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
-          {isLoading ? (
+          {state.isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>Iniciar Sesión</Text>
@@ -101,7 +94,7 @@ const LoginScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.linkButton}
           onPress={() => navigation.navigate('ForgotPassword')}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
@@ -109,7 +102,7 @@ const LoginScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.linkButton}
           onPress={() => navigation.navigate('Register')}
-          disabled={isLoading}
+          disabled={state.isLoading}
         >
           <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>
@@ -184,4 +177,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen; 
+export default LoginScreen;

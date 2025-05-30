@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import TokenStorage from './tokenStorage';
 
 // Configuración base de la API
 const API_BASE_URL = 'http://10.0.2.2:8080';
@@ -9,73 +9,66 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
-// Interceptor para agregar el token a las requests
+// Interceptor para agregar token a las requests
 api.interceptors.request.use(
   async (config) => {
     try {
-      console.log('authService: Iniciando interceptor de request...');
-      const token = await AsyncStorage.getItem('token');
-      
+      const token = await TokenStorage.getToken();
       if (token) {
         const tokenParts = token.split('.');
-        console.log('authService: Token encontrado en request:', {
+        console.log('🔐 Token encontrado:', {
           header: tokenParts[0],
           payload: tokenParts[1],
           signature: tokenParts[2] ? 'Presente' : 'Ausente',
-          length: token.length
+          length: token.length,
         });
-        
+
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('authService: Headers configurados:', {
-          ...config.headers,
-          Authorization: 'Bearer [TOKEN]'
-        });
       } else {
-        console.log('authService: ⚠️ No se encontró token para la petición');
+        console.log('⚠️ No se encontró token para la petición');
       }
-      
-      console.log('authService: Detalles de la petición:', {
-        url: config.url,
-        method: config.method,
-        baseURL: config.baseURL,
-        headers: Object.keys(config.headers)
-      });
     } catch (error) {
-      console.error('authService: Error en interceptor:', error);
+      console.error('❌ Error en interceptor de request:', error);
     }
     return config;
   },
   (error) => {
-    console.error('authService: Error en interceptor de request:', error);
     return Promise.reject(error);
   }
 );
 
-// Interceptor para manejar respuestas
+// Interceptor de respuesta
 api.interceptors.response.use(
   (response) => {
-    console.log('authService: Respuesta exitosa:', {
+    console.log('✅ Respuesta recibida:', {
       url: response.config.url,
       status: response.status,
-      hasData: !!response.data
     });
     return response;
   },
-  (error) => {
-    console.error('authService: Error en respuesta:', {
+  async (error) => {
+    console.error('❌ Error en respuesta:', {
       url: error.config?.url,
       status: error.response?.status,
       data: error.response?.data,
-      message: error.message
+      message: error.message,
     });
+
+    if (error.response?.status === 401) {
+      console.log('🔒 Token expirado, limpiando almacenamiento...');
+      await TokenStorage.clearAll();
+      // Aquí podrías redirigir al login si es necesario
+    }
+
     return Promise.reject(error);
   }
 );
 
-export const authService = {
-  // Registro de usuario
+// Funciones de autenticación
+export const authApi = {
   signup: async (userData) => {
     try {
       const response = await api.post('/auth/signup', userData);
@@ -85,20 +78,18 @@ export const authService = {
     }
   },
 
-  // Login
-  login: async (username, password) => {
+  login: async (credentials) => {
     try {
-      const response = await api.post('/auth/login', { username, password });
-      if (response.data.token) {
-        await AsyncStorage.setItem('token', response.data.token);
-      }
+      console.log('🔐 authApi.login:', credentials);
+      const response = await api.post('/auth/login', credentials);
+      console.log('🔐 Login exitoso:', response.data);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { error: 'Error en el inicio de sesión' };
+      console.error('❌ authApi.login Error:', error.response?.data || error.message);
+      throw error.response?.data || { error: 'Error en el login' };
     }
   },
 
-  // Verificación de cuenta
   verifyAccount: async (verificationData) => {
     try {
       const response = await api.post('/auth/verify', verificationData);
@@ -108,7 +99,6 @@ export const authService = {
     }
   },
 
-  // Reenvío de código
   resendCode: async (resendData) => {
     try {
       const response = await api.post('/auth/resend', resendData);
@@ -118,7 +108,6 @@ export const authService = {
     }
   },
 
-  // Solicitar código de recuperación de contraseña
   forgotPassword: async (email) => {
     try {
       const response = await api.post('/auth/forgot-password', { email });
@@ -128,7 +117,6 @@ export const authService = {
     }
   },
 
-  // Verificar código de recuperación
   verifyResetCode: async (verificationData) => {
     try {
       const response = await api.post('/auth/verify-reset-code', verificationData);
@@ -138,7 +126,6 @@ export const authService = {
     }
   },
 
-  // Restablecer contraseña
   resetPassword: async (resetData) => {
     try {
       const response = await api.post('/auth/reset-password', resetData);
@@ -148,36 +135,23 @@ export const authService = {
     }
   },
 
-  // Logout
+  getProfile: async () => {
+    try {
+      const response = await api.get('/auth/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { error: 'Error al obtener perfil' };
+    }
+  },
+
   logout: async () => {
     try {
-      await AsyncStorage.removeItem('token');
+      const response = await api.post('/auth/logout');
+      return response.data;
     } catch (error) {
-      console.error('Error durante logout:', error);
-      throw error;
+      console.warn('⚠️ Error en logout:', error.message);
     }
   },
-
-  // Verificar si el usuario está autenticado
-  isAuthenticated: async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      return !!token;
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      return false;
-    }
-  },
-
-  // Obtener token
-  getToken: async () => {
-    try {
-      return await AsyncStorage.getItem('token');
-    } catch (error) {
-      console.error('Error getting token:', error);
-      return null;
-    }
-  }
 };
 
-export default authService; 
+export default authApi;
