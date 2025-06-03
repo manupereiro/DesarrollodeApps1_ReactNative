@@ -105,8 +105,9 @@ export const RoutesProvider = ({ children }) => {
       await routesService.selectRoute(routeId);
       await loadRoutes();
     } catch (error) {
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
-      throw error;
+      const errorMessage = error.error || error.message || 'Error al seleccionar la ruta';
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      throw new Error(errorMessage);
     }
   };
 
@@ -117,8 +118,9 @@ export const RoutesProvider = ({ children }) => {
       await routesService.cancelRoute(routeId);
       await loadRoutes();
     } catch (error) {
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
-      throw error;
+      const errorMessage = error.error || error.message || 'Error al cancelar la ruta';
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      throw new Error(errorMessage);
     }
   };
 
@@ -131,9 +133,11 @@ export const RoutesProvider = ({ children }) => {
         type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS,
         payload: { id: routeId, status }
       });
+      await loadRoutes(); // Recargar las rutas para asegurar sincronización
     } catch (error) {
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
-      throw error;
+      const errorMessage = error.error || error.message || 'Error al actualizar el estado de la ruta';
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      throw new Error(errorMessage);
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
     }

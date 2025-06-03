@@ -1,23 +1,8 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
+import { getApiConfig } from '../config/apiConfig';
 import TokenStorage from './tokenStorage';
 
-// Configuración base de la API
-const API_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:8080/',
-  ios: 'http://localhost:8080/',
-  default: 'http://localhost:8080/'
-});
-
-console.log('🌐 API Base URL:', API_BASE_URL);
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 10000,
-});
+const api = axios.create(getApiConfig());
 
 // Interceptor para agregar el token a las requests
 api.interceptors.request.use(

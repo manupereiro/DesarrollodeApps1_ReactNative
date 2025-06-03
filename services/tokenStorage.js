@@ -25,14 +25,32 @@ const storage = isWeb ? webStorage : SecureStore;
 
 export const saveToken = async (token) => {
   try {
-    console.log('🔐 TokenStorage: Guardando token...');
+    console.log('🔐 TokenStorage: Guardando token...', {
+      tokenLength: token?.length,
+      tokenType: typeof token,
+      tokenPreview: token ? `${token.substring(0, 10)}...` : null
+    });
+    
+    if (!token) {
+      console.warn('⚠️ TokenStorage: Intento de guardar token nulo o indefinido');
+      return;
+    }
+
     await storage.setItemAsync('jwt', token);
-    console.log('✅ TokenStorage: Token guardado exitosamente');
+    
+    // Verificar que se guardó correctamente
+    const savedToken = await storage.getItemAsync('jwt');
+    console.log('✅ TokenStorage: Token guardado exitosamente', {
+      saved: !!savedToken,
+      length: savedToken?.length,
+      matches: savedToken === token
+    });
   } catch (error) {
     console.error('❌ Error saving token:', error);
     // Fallback to a simpler implementation if the method doesn't exist
     if (isWeb) {
       localStorage.setItem('jwt', token);
+      console.log('✅ TokenStorage: Token guardado en localStorage (fallback)');
     }
   }
 };
@@ -41,13 +59,34 @@ export const getToken = async () => {
   try {
     console.log('🔍 TokenStorage: Obteniendo token...');
     const token = await storage.getItemAsync('jwt');
-    console.log('🔍 TokenStorage: Token obtenido:', token ? 'existe' : 'no existe');
+    
+    console.log('🔍 TokenStorage: Token obtenido:', {
+      exists: !!token,
+      length: token?.length,
+      type: typeof token,
+      preview: token ? `${token.substring(0, 10)}...` : null
+    });
+
+    if (!token && isWeb) {
+      // Fallback para web
+      const webToken = localStorage.getItem('jwt');
+      console.log('🔍 TokenStorage: Token obtenido de localStorage (fallback):', {
+        exists: !!webToken,
+        length: webToken?.length
+      });
+      return webToken;
+    }
+
     return token;
   } catch (error) {
     console.error('❌ Error getting token:', error);
-    // Fallback to a simpler implementation if the method doesn't exist
     if (isWeb) {
-      return localStorage.getItem('jwt');
+      const webToken = localStorage.getItem('jwt');
+      console.log('🔍 TokenStorage: Token obtenido de localStorage (fallback):', {
+        exists: !!webToken,
+        length: webToken?.length
+      });
+      return webToken;
     }
     return null;
   }
@@ -129,12 +168,30 @@ const TokenStorage = {
   
   setAuthData: async (token, userData = null) => {
     try {
-      console.log('🔐 TokenStorage: Guardando datos de autenticación completos...');
+      console.log('🔐 TokenStorage: Guardando datos de autenticación completos...', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        hasUserData: !!userData
+      });
+
+      if (!token) {
+        console.warn('⚠️ TokenStorage: Intento de guardar token nulo o indefinido');
+        return;
+      }
+
       await saveToken(token);
       if (userData) {
         await saveUserData(userData);
       }
-      console.log('✅ TokenStorage: Datos de autenticación guardados exitosamente');
+
+      // Verificar que todo se guardó correctamente
+      const { token: savedToken, userData: savedUserData } = await TokenStorage.getAuthData();
+      console.log('✅ TokenStorage: Verificación de datos guardados:', {
+        tokenSaved: !!savedToken,
+        tokenLength: savedToken?.length,
+        tokenMatches: savedToken === token,
+        userDataSaved: !!savedUserData
+      });
     } catch (error) {
       console.error('❌ TokenStorage: Error guardando datos de autenticación:', error);
       throw error;

@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import LoadingScreen from '../components/LoadingScreen';
 import { useAuth } from '../context/AuthContext';
 
 // Pantallas
@@ -13,12 +12,12 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MyRoutes from '../screens/MyRoutes';
-import RegisterScreen from '../screens/RegisterScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
-import RoutesScreen from '../screens/RoutesScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import RoutesScreen from '../screens/RoutesScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import VerifyCodeScreen from '../screens/VerifyCodeScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
@@ -146,8 +145,7 @@ const AuthStackWithInitial = ({ initialRouteName, pendingVerification }) => (
 
 // Navegador principal
 const AppNavigator = () => {
-  const { state, isLoading: authLoading, pendingVerification } = useAuth();
-  const { userToken } = state || {};
+  const { state, isLoading: authLoading, pendingVerification, isAuthenticated } = useAuth();
   const [hasBootstrapped, setHasBootstrapped] = useState(false);
 
   useEffect(() => {
@@ -164,8 +162,6 @@ const AppNavigator = () => {
       </View>
     );
   }
-
-  const isAuthenticated = !!userToken;
 
   return (
     <NavigationContainer>

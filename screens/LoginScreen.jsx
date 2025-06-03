@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, state } = useAuth();
+  const { login, state } = useAuth();
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -26,7 +26,7 @@ const LoginScreen = ({ navigation }) => {
     try {
       console.log('🔄 Intentando login con username:', username);
       const credentials = { username: username.trim(), password: password.trim() };
-      await signIn(credentials);
+      await login(credentials);
       console.log('✅ Login exitoso');
       // Navegación se maneja por el contexto
     } catch (error) {

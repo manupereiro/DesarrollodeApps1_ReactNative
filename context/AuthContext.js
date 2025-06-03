@@ -1,12 +1,12 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
-import authService from '../services/authService';
+import authApi from '../services/authApi';
+import TokenStorage from '../services/tokenStorage';
 
 // Estados iniciales
 const initialState = {
   user: null,
   token: null,
-  isLoading: true,
+  isLoading: false,
   isAuthenticated: false,
   pendingVerification: null,
 };
@@ -17,8 +17,8 @@ const AUTH_ACTIONS = {
   LOGIN_SUCCESS: 'LOGIN_SUCCESS',
   LOGOUT: 'LOGOUT',
   SET_USER: 'SET_USER',
-  SET_PENDING_VERIFICATION: 'SET_PENDING_VERIFICATION', 
-  CLEAR_PENDING_VERIFICATION: 'CLEAR_PENDING_VERIFICATION', 
+  SET_PENDING_VERIFICATION: 'SET_PENDING_VERIFICATION',
+  CLEAR_PENDING_VERIFICATION: 'CLEAR_PENDING_VERIFICATION',
 };
 
 // Reducer
@@ -39,10 +39,7 @@ const authReducer = (state, action) => {
       };
     case AUTH_ACTIONS.LOGOUT:
       return {
-        ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
+        ...initialState,
         isLoading: false,
       };
     case AUTH_ACTIONS.SET_USER:
@@ -52,14 +49,14 @@ const authReducer = (state, action) => {
         isLoading: false,
       };
     case AUTH_ACTIONS.SET_PENDING_VERIFICATION:
-      return { 
-        ...state, 
-        pendingVerification: action.payload 
+      return {
+        ...state,
+        pendingVerification: action.payload,
       };
     case AUTH_ACTIONS.CLEAR_PENDING_VERIFICATION:
-      return { 
-        ...state, 
-        pendingVerification: null 
+      return {
+        ...state,
+        pendingVerification: null,
       };
     default:
       return state;
@@ -81,30 +78,20 @@ export const AuthProvider = ({ children }) => {
   const checkAuthState = async () => {
     try {
       console.log('AuthContext: Verificando estado de autenticación...');
-      const token = await AsyncStorage.getItem('token');
-      console.log('AuthContext: Token encontrado en checkAuthState:', {
-        exists: !!token,
-        length: token?.length,
-        parts: token ? token.split('.') : null,
-        decodedPayload: token ? JSON.parse(atob(token.split('.')[1])) : null
-      });
-
+      const { token, userData } = await TokenStorage.getAuthData();
+      
       if (token) {
-        // Aquí podrías hacer una llamada al backend para verificar si el token es válido
-        console.log('AuthContext: Token válido, actualizando estado...');
+        console.log('AuthContext: Token encontrado, actualizando estado...');
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
-          payload: { token, user: null },
+          payload: { token, user: userData },
         });
       } else {
         console.log('AuthContext: No se encontró token, limpiando estado...');
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       }
     } catch (error) {
-      console.error('AuthContext: Error al verificar estado de autenticación:', {
-        error: error.message,
-        stack: error.stack
-      });
+      console.error('AuthContext: Error al verificar estado de autenticación:', error);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
     }
   };
@@ -118,11 +105,30 @@ export const AuthProvider = ({ children }) => {
       console.log('AuthContext: Iniciando login con username:', credentials.username);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       
-      // Llamar a authService.login con los parámetros separados
-      const response = await authService.login(credentials.username, credentials.password);
+      // Llamar a authApi.login con el objeto credentials
+      const response = await authApi.login(credentials);
       
-      console.log('AuthContext: Login exitoso, guardando token...');
-      await AsyncStorage.setItem('token', response.token);
+      console.log('AuthContext: Login exitoso, respuesta recibida:', {
+        hasToken: !!response.token,
+        tokenLength: response.token?.length,
+        hasUser: !!response.user,
+        userData: response.user ? {
+          id: response.user.id,
+          username: response.user.username,
+          role: response.user.role
+        } : null
+      });
+
+      console.log('AuthContext: Guardando token y datos de usuario...');
+      await TokenStorage.setAuthData(response.token, response.user || null);
+      
+      // Verificar que el token se guardó correctamente
+      const { token: savedToken, userData: savedUserData } = await TokenStorage.getAuthData();
+      console.log('AuthContext: Verificación de datos guardados:', {
+        tokenSaved: !!savedToken,
+        tokenLength: savedToken?.length,
+        userDataSaved: !!savedUserData
+      });
       
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -143,8 +149,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      await authService.logout();
+      await TokenStorage.clearAll();
+      await authApi.logout();
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
     } catch (error) {
       console.error('Error during logout:', error);
@@ -154,9 +160,9 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.signup(userData);
+      const response = await authApi.signup(userData);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
-      dispatch({ type: AUTH_ACTIONS.SET_PENDING_VERIFICATION, payload: userData.email }); // <-- NUEVO
+      dispatch({ type: AUTH_ACTIONS.SET_PENDING_VERIFICATION, payload: userData.email });
       return response;
     } catch (error) {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
@@ -167,7 +173,7 @@ export const AuthProvider = ({ children }) => {
   const verifyAccount = async (verificationData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.verifyAccount(verificationData);
+      const response = await authApi.verifyAccount(verificationData);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       return response;
     } catch (error) {
@@ -179,7 +185,7 @@ export const AuthProvider = ({ children }) => {
   const forgotPassword = async (email) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.forgotPassword(email);
+      const response = await authApi.forgotPassword(email);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       return response;
     } catch (error) {
@@ -191,7 +197,7 @@ export const AuthProvider = ({ children }) => {
   const verifyResetCode = async (verificationData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.verifyResetCode(verificationData);
+      const response = await authApi.verifyResetCode(verificationData);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       return response;
     } catch (error) {
@@ -203,7 +209,7 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (resetData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.resetPassword(resetData);
+      const response = await authApi.resetPassword(resetData);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       return response;
     } catch (error) {
@@ -215,7 +221,7 @@ export const AuthProvider = ({ children }) => {
   const resendCode = async (resendData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
-      const response = await authService.resendCode(resendData);
+      const response = await authApi.resendCode(resendData);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       return response;
     } catch (error) {
@@ -225,7 +231,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = {
-    ...state,
+    state,
+    isLoading: state.isLoading,
+    isAuthenticated: state.isAuthenticated,
+    user: state.user,
+    pendingVerification: state.pendingVerification,
     login,
     logout,
     signup,
@@ -234,7 +244,6 @@ export const AuthProvider = ({ children }) => {
     verifyResetCode,
     resetPassword,
     resendCode,
-    dispatch,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
