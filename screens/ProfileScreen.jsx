@@ -1,47 +1,42 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useRoutes } from '../context/RoutesContext';
 import profileApi from '../services/profileApi';
 
 const ProfileScreen = ({ navigation }) => {
   const { state } = useAuth();
   const { user } = state;
+  const { myRoutes, loading: routesLoading, loadRoutes } = useRoutes();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
-  // Datos hardcodeados para pedidos recientes
-  const [recentOrders] = useState([
-    {
-      id: 1,
-      date: '2024-03-15',
-      status: 'Entregado',
-      address: 'Av. Siempreviva 742, Springfield',
-      items: 3,
-      total: 1500.00
-    },
-    {
-      id: 2,
-      date: '2024-03-10',
-      status: 'En Proceso',
-      address: 'Calle Falsa 123, Springfield',
-      items: 2,
-      total: 850.50
-    }
-  ]);
+  const [completedRoutes, setCompletedRoutes] = useState([]);
 
   useEffect(() => {
     loadProfileData();
+    loadRoutes();
   }, []);
+
+  useEffect(() => {
+    // Filtrar solo las rutas completadas
+    const completed = myRoutes.filter(route => route.status === 'COMPLETED');
+    // Ordenar por fecha de completado (más recientes primero)
+    const sorted = completed.sort((a, b) => 
+      new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt)
+    );
+    setCompletedRoutes(sorted);
+  }, [myRoutes]);
 
   const loadProfileData = async () => {
     try {
@@ -63,10 +58,11 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleRefresh = () => {
     loadProfileData();
+    loadRoutes();
   };
 
-  const handleOrderPress = (orderId) => {
-    navigation.navigate('OrderDetails', { orderId });
+  const handleRoutePress = (route) => {
+    navigation.navigate('RouteDetails', { routeData: route });
   };
 
   if (loading) {
@@ -163,70 +159,72 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Recent Orders Section */}
+        {/* Route History Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Pedidos Recientes</Text>
+            <Text style={styles.sectionTitle}>Historial de Rutas</Text>
             <TouchableOpacity 
               style={styles.seeAllButton}
-              onPress={() => navigation.navigate('OrderHistory')}
+              onPress={() => navigation.navigate('RouteHistory')}
             >
-              <Text style={styles.seeAllButtonText}>Ver todos</Text>
+              <Text style={styles.seeAllButtonText}>Ver todo</Text>
               <Ionicons name="chevron-forward" size={16} color="#2196F3" />
             </TouchableOpacity>
           </View>
 
-          {recentOrders.length === 0 ? (
+          {routesLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#2196F3" />
+              <Text style={styles.loadingText}>Cargando rutas...</Text>
+            </View>
+          ) : completedRoutes.length === 0 ? (
             <View style={styles.emptyOrdersContainer}>
-              <Ionicons name="receipt-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyOrdersText}>No hay pedidos recientes</Text>
+              <Ionicons name="checkmark-circle-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyOrdersText}>No hay rutas completadas</Text>
             </View>
           ) : (
-            recentOrders.map((order) => (
+            completedRoutes.slice(0, 3).map((route) => (
               <TouchableOpacity 
-                key={order.id} 
-                style={styles.orderCard}
-                onPress={() => handleOrderPress(order.id)}
+                key={route.id} 
+                style={styles.routeCard}
+                onPress={() => handleRoutePress(route)}
               >
-                <View style={styles.orderHeader}>
+                <View style={styles.routeHeader}>
                   <View>
-                    <Text style={styles.orderNumber}>Pedido #{order.id}</Text>
-                    <Text style={styles.orderDate}>{new Date(order.date).toLocaleDateString()}</Text>
-                  </View>
-                  <View style={[
-                    styles.statusBadge,
-                    { backgroundColor: order.status === 'Entregado' ? '#E8F5E9' : '#FFF3E0' }
-                  ]}>
-                    <Text style={[
-                      styles.statusText,
-                      { color: order.status === 'Entregado' ? '#2E7D32' : '#EF6C00' }
-                    ]}>
-                      {order.status}
+                    <Text style={styles.routeDate}>
+                      {new Date(route.completedAt || route.updatedAt).toLocaleDateString()}
+                    </Text>
+                    <Text style={styles.routeTime}>
+                      {new Date(route.completedAt || route.updatedAt).toLocaleTimeString()}
                     </Text>
                   </View>
-                </View>
-
-                <View style={styles.orderDetails}>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="location-outline" size={16} color="#666" />
-                    <Text style={styles.detailText} numberOfLines={1}>{order.address}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="cube-outline" size={16} color="#666" />
-                    <Text style={styles.detailText}>{order.items} items</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="cash-outline" size={16} color="#666" />
-                    <Text style={styles.detailText}>${order.total.toFixed(2)}</Text>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>Completada</Text>
                   </View>
                 </View>
 
-                <TouchableOpacity 
-                  style={styles.trackButton}
-                  onPress={() => handleOrderPress(order.id)}
-                >
-                  <Text style={styles.trackButtonText}>Ver Detalles</Text>
-                </TouchableOpacity>
+                <View style={styles.routeContent}>
+                  <View style={styles.locationContainer}>
+                    <Ionicons name="location" size={20} color="#666" />
+                    <Text style={styles.locationText} numberOfLines={1}>{route.origin}</Text>
+                  </View>
+                  <View style={styles.locationContainer}>
+                    <Ionicons name="flag" size={20} color="#666" />
+                    <Text style={styles.locationText} numberOfLines={1}>{route.destination}</Text>
+                  </View>
+                  <View style={styles.detailsContainer}>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="speedometer" size={20} color="#666" />
+                      <Text style={styles.detailText}>{route.distance} km</Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="time" size={20} color="#666" />
+                      <Text style={styles.detailText}>
+                        {route.estimatedDuration ? `${route.estimatedDuration} mins` : 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -426,73 +424,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 4,
   },
-  orderCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  orderNumber: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  orderDate: {
-    fontSize: 14,
-    color: '#666',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  orderDetails: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-    marginBottom: 12,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
-    flex: 1,
-  },
-  trackButton: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  trackButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   emptyOrdersContainer: {
     alignItems: 'center',
     padding: 20,
@@ -505,7 +436,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-  }
+  },
+  routeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  routeDate: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  routeTime: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  statusBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#2E7D32',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  routeContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 12,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 8,
+    flex: 1,
+  },
+  detailsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+  },
 });
 
 export default ProfileScreen; 

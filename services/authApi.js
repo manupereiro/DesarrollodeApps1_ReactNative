@@ -187,10 +187,22 @@ export const authApi = {
 
   logout: async () => {
     try {
-      const response = await api.post('/auth/logout');
-      return response.data;
+      // Intentamos hacer logout en el backend, pero no es crítico si falla
+      await api.post('/auth/logout').catch(error => {
+        // Si el error es 401 o 403, probablemente el token ya expiró o es inválido
+        // Lo cual es esperado durante el logout, así que lo manejamos silenciosamente
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.log('🔒 Token ya expirado o inválido durante logout - esto es normal');
+          return;
+        }
+        // Para otros errores, los registramos pero no los propagamos
+        console.warn('⚠️ Error no crítico durante logout:', error.message);
+      });
+      return { success: true };
     } catch (error) {
-      console.warn('⚠️ Error en logout:', error.message);
+      // No propagamos el error ya que el logout local es lo importante
+      console.log('ℹ️ Logout completado (backend opcional)');
+      return { success: true };
     }
   },
 };

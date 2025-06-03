@@ -149,11 +149,20 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Primero limpiamos el almacenamiento local
       await TokenStorage.clearAll();
+      
+      // Luego intentamos el logout en el backend (ahora manejado silenciosamente)
       await authApi.logout();
+      
+      // Finalmente actualizamos el estado
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      
+      console.log('✅ Logout completado exitosamente');
     } catch (error) {
-      console.error('Error during logout:', error);
+      // Si algo falla, aún así limpiamos el estado local
+      console.log('ℹ️ Logout local completado (backend opcional)');
+      dispatch({ type: AUTH_ACTIONS.LOGOUT });
     }
   };
 

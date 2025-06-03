@@ -1,18 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 const SettingsScreen = ({ navigation }) => {
-  const { signOut } = useAuth();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -23,7 +23,7 @@ const SettingsScreen = ({ navigation }) => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: signOut,
+          onPress: logout,
         },
       ]
     );

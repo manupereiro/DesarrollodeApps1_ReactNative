@@ -17,6 +17,8 @@ import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import RouteDetailsScreen from '../screens/RouteDetailsScreen';
+import RouteHistoryScreen from '../screens/RouteHistoryScreen';
 import RoutesScreen from '../screens/RoutesScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import VerifyCodeScreen from '../screens/VerifyCodeScreen';
@@ -94,6 +96,16 @@ const AppStack = () => {
         name="MyRoutes"
         component={MyRoutes}
         options={{ title: 'Mis Rutas' }}
+      />
+      <Stack.Screen
+        name="RouteHistory"
+        component={RouteHistoryScreen}
+        options={{ title: 'Historial de Rutas' }}
+      />
+      <Stack.Screen
+        name="RouteDetails"
+        component={RouteDetailsScreen}
+        options={{ title: 'Detalles de la Ruta' }}
       />
       <Stack.Screen
         name="Profile"
