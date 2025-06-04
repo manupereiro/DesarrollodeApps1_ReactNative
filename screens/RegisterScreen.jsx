@@ -12,6 +12,7 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { clearAllAuthData } from '../services/tokenStorage';
 
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -44,14 +45,23 @@ const RegisterScreen = ({ navigation }) => {
 
     try {
       console.log('🔄 RegisterScreen: Iniciando registro...');
+      
       const response = await signup({ username, email, password });
       console.log('✅ RegisterScreen: Registro completado exitosamente:', response);
-
-      console.log('🔄 RegisterScreen: Navegando a VerifyEmailScreen con email:', email);
+      
+      // Navegación directa e inmediata
+      console.log('🔄 RegisterScreen: Navegando a VerifyEmail con email:', email);
       navigation.navigate('VerifyEmail', { email });
       console.log('✅ RegisterScreen: Navegación ejecutada correctamente');
+      
     } catch (error) {
       console.log('❌ RegisterScreen: Error durante registro:', error);
+      // Si el error es de JWT expirado, limpiar y mostrar mensaje claro
+      if (error?.error?.includes('expired') || error?.message?.includes('expired')) {
+        await clearAllAuthData();
+        Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Por favor, vuelve a intentarlo.');
+        return;
+      }
       const errorMessage = error.error || error.message || 'Error al registrar usuario';
       Alert.alert('Error', errorMessage);
     }
@@ -125,7 +135,7 @@ const RegisterScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => navigation.navigate('LoginScreen')}
+            onPress={() => navigation.navigate('Login')}
             disabled={state.isLoading}
           >
             <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia sesión</Text>

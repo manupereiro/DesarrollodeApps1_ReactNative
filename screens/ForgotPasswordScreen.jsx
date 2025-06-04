@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,7 +35,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
       
       // Navegación directa SIN setTimeout ni Alert
       console.log('🔄 ForgotPasswordScreen: Navegando INMEDIATAMENTE a VerifyCodeScreen');
-      navigation.navigate('VerifyCodeScreen', { 
+      navigation.navigate('VerifyCode', { 
         email, 
         codeType: 'passwordReset' 
       });
@@ -85,7 +85,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('LoginScreen')}
+          onPress={() => navigation.navigate('Login')}
           disabled={state.isLoading}
         >
           <Text style={styles.linkText}>Volver al Inicio de Sesión</Text>

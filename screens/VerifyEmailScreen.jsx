@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 
 const VerifyEmailScreen = ({ navigation, route }) => {
-  const { verifyAccount, resendCode, dispatch, state } = useAuth();
   const { email } = route.params || {};
   const [verificationCode, setVerificationCode] = useState('');
+  const { verifyAccount, resendCode, state } = useAuth();
 
   console.log('VerifyEmailScreen renderizada con email:', email);
   console.log('🔍 VerifyEmailScreen: isAuthenticated =', !!state.userToken);
@@ -51,14 +51,13 @@ const VerifyEmailScreen = ({ navigation, route }) => {
           ]
         );
       } else {
-        dispatch({ type: 'CLEAR_PENDING_VERIFICATION' });
         Alert.alert(
           'Verificación exitosa',
           'Tu cuenta ha sido verificada correctamente. Ahora puedes iniciar sesión.',
           [
             {
               text: 'OK',
-              onPress: () => navigation.navigate('LoginScreen'),
+              onPress: () => navigation.navigate('Login'),
             },
           ]
         );
@@ -95,7 +94,7 @@ const VerifyEmailScreen = ({ navigation, route }) => {
           </Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate('RegisterScreen')}
+            onPress={() => navigation.navigate('Register')}
           >
             <Text style={styles.buttonText}>Volver al Registro</Text>
           </TouchableOpacity>
@@ -151,10 +150,7 @@ const VerifyEmailScreen = ({ navigation, route }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => {
-            dispatch({ type: 'CLEAR_PENDING_VERIFICATION' });
-            navigation.navigate('LoginScreen');
-          }}
+          onPress={() => navigation.navigate('Login')}
           disabled={state.isLoading}
         >
           <Text style={styles.linkText}>Volver al login</Text>
