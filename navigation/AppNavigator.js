@@ -1,28 +1,44 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
-// Importar pantallas
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import VerifyEmailScreen from '../screens/VerifyEmailScreen';
+// Pantallas
+import AvailableRoutes from '../screens/AvailableRoutes';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import VerifyCodeScreen from '../screens/VerifyCodeScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
+import LoginScreen from '../screens/LoginScreen';
+import MyRoutes from '../screens/MyRoutes';
+import OrderDetailsScreen from '../screens/OrderDetailsScreen';
+import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import RouteDetailsScreen from '../screens/RouteDetailsScreen';
+import RouteHistoryScreen from '../screens/RouteHistoryScreen';
+import RoutesScreen from '../screens/RoutesScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import VerifyCodeScreen from '../screens/VerifyCodeScreen';
+import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Stack de autenticación (NO autenticado)
-const AuthStack = () => {
-  console.log('🔄 AuthStack: Renderizando stack de autenticación');
-  
+// Tabs principales (autenticado)
+const MainTabs = () => {
   return (
-    <Stack.Navigator
-      initialRouteName="LoginScreen"
+    <Tab.Navigator
       screenOptions={{
+        tabBarActiveTintColor: '#2196F3',
+        tabBarInactiveTintColor: '#757575',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#e0e0e0',
+        },
         headerStyle: {
           backgroundColor: '#2196F3',
         },
@@ -32,93 +48,125 @@ const AuthStack = () => {
         },
       }}
     >
-      <Stack.Screen 
-        name="LoginScreen" 
-        component={LoginScreen} 
-        options={{ title: 'Iniciar Sesión' }}
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Inicio',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" size={size} color={color} />
+          ),
+        }}
       />
-      <Stack.Screen 
-        name="RegisterScreen" 
-        component={RegisterScreen} 
-        options={{ title: 'Registro' }}
+      <Tab.Screen
+        name="Routes"
+        component={RoutesScreen}
+        options={{
+          title: 'Rutas',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="local-shipping" size={size} color={color} />
+          ),
+        }}
       />
-      <Stack.Screen 
-        name="VerifyEmailScreen" 
-        component={VerifyEmailScreen} 
-        options={{ title: 'Verificar Email' }}
-      />
-      <Stack.Screen 
-        name="ForgotPasswordScreen" 
-        component={ForgotPasswordScreen} 
-        options={{ title: 'Recuperar Contraseña' }}
-      />
-      <Stack.Screen 
-        name="VerifyCodeScreen" 
-        component={VerifyCodeScreen} 
-        options={{ title: 'Verificar Código' }}
-      />
-      <Stack.Screen 
-        name="ResetPasswordScreen" 
-        component={ResetPasswordScreen} 
-        options={{ title: 'Nueva Contraseña' }}
-      />
-    </Stack.Navigator>
+    </Tab.Navigator>
   );
 };
 
 // Stack principal (autenticado)
 const AppStack = () => {
-  console.log('🔄 AppStack: Renderizando stack principal');
-  
   return (
     <Stack.Navigator
-      initialRouteName="HomeScreen"
       screenOptions={{
-        headerStyle: {
-          backgroundColor: '#2196F3',
-        },
+        headerStyle: { backgroundColor: '#2196F3' },
         headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
-      <Stack.Screen 
-        name="HomeScreen" 
-        component={HomeScreen} 
-        options={{ 
-          title: 'Inicio',
-          headerLeft: null, // No se puede volver atrás
-          gestureEnabled: false, // Deshabilitar gesto de vuelta
-        }}
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AvailableRoutes"
+        component={AvailableRoutes}
+        options={{ title: 'Rutas Disponibles' }}
+      />
+      <Stack.Screen
+        name="MyRoutes"
+        component={MyRoutes}
+        options={{ title: 'Mis Rutas' }}
+      />
+      <Stack.Screen
+        name="RouteHistory"
+        component={RouteHistoryScreen}
+        options={{ title: 'Historial de Rutas' }}
+      />
+      <Stack.Screen
+        name="RouteDetails"
+        component={RouteDetailsScreen}
+        options={{ title: 'Detalles de la Ruta' }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: 'Mi Perfil' }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: 'Configuración' }}
+      />
+      <Stack.Screen
+        name="OrderHistory"
+        component={OrderHistoryScreen}
+        options={{ title: 'Historial de Pedidos' }}
+      />
+      <Stack.Screen
+        name="OrderDetails"
+        component={OrderDetailsScreen}
+        options={{ title: 'Detalles del Pedido' }}
       />
     </Stack.Navigator>
   );
 };
 
+// Stack autenticación
+const AuthStackWithInitial = ({ initialRouteName, pendingVerification }) => (
+  <Stack.Navigator
+    initialRouteName={initialRouteName}
+    screenOptions={{
+      headerStyle: { backgroundColor: '#2196F3' },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: 'bold' },
+    }}
+  >
+    <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
+    <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro' }} />
+    <Stack.Screen
+      name="VerifyEmail"
+      component={VerifyEmailScreen}
+      options={{ title: 'Verificar Email' }}
+      initialParams={pendingVerification ? { email: pendingVerification } : undefined}
+    />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} />
+    <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} options={{ title: 'Verificar Código' }} />
+    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nueva Contraseña' }} />
+  </Stack.Navigator>
+);
+
 // Navegador principal
 const AppNavigator = () => {
-  const { state } = useAuth();
-  const { userToken, isLoading, user } = state;
+  const { state, isLoading: authLoading, pendingVerification, isAuthenticated } = useAuth();
   const [hasBootstrapped, setHasBootstrapped] = useState(false);
-  
-  console.log('🔍 AppNavigator: Renderizando navegador principal');
-  console.log('🔍 AppNavigator: isLoading =', isLoading);
-  console.log('🔍 AppNavigator: hasBootstrapped =', hasBootstrapped);
-  console.log('🔍 AppNavigator: userToken =', userToken ? 'existe' : 'no existe');
-  console.log('👤 AppNavigator: user =', user);
 
-  // Marcar como bootstrapped cuando termine la carga inicial
   useEffect(() => {
-    if (!isLoading && !hasBootstrapped) {
-      console.log('✅ AppNavigator: Bootstrap completado');
+    if (!authLoading && !hasBootstrapped) {
       setHasBootstrapped(true);
     }
-  }, [isLoading, hasBootstrapped]);
+  }, [authLoading, hasBootstrapped]);
 
-  // Pantalla de carga SOLO durante bootstrap inicial
   if (!hasBootstrapped) {
-    console.log('⏳ AppNavigator: Mostrando pantalla de carga inicial');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
@@ -127,14 +175,16 @@ const AppNavigator = () => {
     );
   }
 
-  // Determinar qué stack mostrar
-  const isAuthenticated = !!userToken;
-  console.log('🚀 AppNavigator: isAuthenticated =', isAuthenticated);
-  console.log('🚀 AppNavigator: Navegando a', isAuthenticated ? 'AppStack' : 'AuthStack');
-
   return (
     <NavigationContainer>
-      {isAuthenticated ? <AppStack /> : <AuthStack />}
+      {isAuthenticated ? (
+        <AppStack />
+      ) : (
+        <AuthStackWithInitial
+          initialRouteName={pendingVerification ? 'VerifyEmail' : 'Login'}
+          pendingVerification={pendingVerification}
+        />
+      )}
     </NavigationContainer>
   );
 };
@@ -153,4 +203,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppNavigator; 
+export default AppNavigator;

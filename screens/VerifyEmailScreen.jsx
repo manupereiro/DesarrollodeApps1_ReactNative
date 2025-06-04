@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
   View,
   Text,
@@ -10,12 +11,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 
 const VerifyEmailScreen = ({ navigation, route }) => {
+  const { verifyAccount, resendCode, dispatch, state } = useAuth();
   const { email } = route.params || {};
   const [verificationCode, setVerificationCode] = useState('');
-  const { verifyAccount, resendCode, state } = useAuth();
 
   console.log('VerifyEmailScreen renderizada con email:', email);
   console.log('🔍 VerifyEmailScreen: isAuthenticated =', !!state.userToken);
@@ -35,7 +35,7 @@ const VerifyEmailScreen = ({ navigation, route }) => {
       console.log('🔄 Enviando verificación con:', { email, verificationCode });
       const response = await verifyAccount({ email, verificationCode });
       console.log('✅ Respuesta de verificación:', response);
-      
+
       // Si la verificación incluye token, se loguea automáticamente
       if (response.token) {
         Alert.alert(
@@ -45,13 +45,13 @@ const VerifyEmailScreen = ({ navigation, route }) => {
             {
               text: 'OK',
               onPress: () => {
-                // La navegación será manejada por el AuthContext automáticamente
                 console.log('🎯 Usuario logueado automáticamente después de verificación');
               },
             },
           ]
         );
       } else {
+        dispatch({ type: 'CLEAR_PENDING_VERIFICATION' });
         Alert.alert(
           'Verificación exitosa',
           'Tu cuenta ha sido verificada correctamente. Ahora puedes iniciar sesión.',
@@ -85,7 +85,6 @@ const VerifyEmailScreen = ({ navigation, route }) => {
     }
   };
 
-  // Si no hay email, mostrar error
   if (!email) {
     return (
       <View style={styles.container}>
@@ -112,12 +111,12 @@ const VerifyEmailScreen = ({ navigation, route }) => {
     >
       <View style={styles.content}>
         <Text style={styles.title}>Verificar Email</Text>
-        
+
         <Text style={styles.subtitle}>
           Hemos enviado un código de verificación a:
         </Text>
         <Text style={styles.email}>{email}</Text>
-        
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -150,6 +149,16 @@ const VerifyEmailScreen = ({ navigation, route }) => {
           <Text style={styles.linkText}>Reenviar código</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => {
+            dispatch({ type: 'CLEAR_PENDING_VERIFICATION' });
+            navigation.navigate('LoginScreen');
+          }}
+          disabled={state.isLoading}
+        >
+          <Text style={styles.linkText}>Volver al login</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -225,4 +234,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VerifyEmailScreen; 
+export default VerifyEmailScreen;

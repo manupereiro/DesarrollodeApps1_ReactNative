@@ -24,4 +24,4 @@ export const SCREEN_NAMES = {
   VERIFY: 'verify',
   HOME: 'home',
   NOT_FOUND: '+not-found',
-}; 
+};
