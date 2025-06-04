@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -68,7 +68,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
             text: 'OK',
             onPress: () => {
               console.log('🔄 ResetPasswordScreen: Navegando a LoginScreen');
-              navigation.navigate('LoginScreen');
+              navigation.navigate('Login');
             },
           },
         ]
@@ -90,7 +90,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
           </Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate('ForgotPasswordScreen')}
+            onPress={() => navigation.navigate('ForgotPassword')}
           >
             <Text style={styles.buttonText}>Volver a Recuperar Contraseña</Text>
           </TouchableOpacity>

@@ -152,16 +152,16 @@ export const AuthProvider = ({ children }) => {
       // Primero limpiamos el almacenamiento local
       await TokenStorage.clearAll();
       
-      // Luego intentamos el logout en el backend (ahora manejado silenciosamente)
+      // Luego intentamos el logout en el backend (manejado silenciosamente)
       await authApi.logout();
       
       // Finalmente actualizamos el estado
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
       
-      console.log('✅ Logout completado exitosamente');
+      console.log('✅ Sesión cerrada exitosamente');
     } catch (error) {
       // Si algo falla, aún así limpiamos el estado local
-      console.log('ℹ️ Logout local completado (backend opcional)');
+      console.log('✅ Sesión cerrada localmente');
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
     }
   };

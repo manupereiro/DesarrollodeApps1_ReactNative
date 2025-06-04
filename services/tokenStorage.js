@@ -239,4 +239,11 @@ const TokenStorage = {
   }
 };
 
+export const clearAllAuthData = async () => {
+  await Promise.all([
+    removeToken(),
+    removeUserData()
+  ]);
+};
+
 export default TokenStorage; 

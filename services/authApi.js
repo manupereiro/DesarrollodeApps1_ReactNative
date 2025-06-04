@@ -42,17 +42,22 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error('❌ Error en respuesta:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-    });
+    // No loguear errores 403 durante el logout
+    const isLogoutRequest = error.config?.url?.includes('/auth/logout');
+    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+    
+    if (!(isLogoutRequest && isAuthError)) {
+      console.error('❌ Error en respuesta:', {
+        url: error.config?.url,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+    }
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isLogoutRequest) {
       console.log('🔒 Token expirado, limpiando almacenamiento...');
       await TokenStorage.clearAll();
-      // Aquí podrías redirigir al login si es necesario
     }
 
     return Promise.reject(error);
@@ -63,9 +68,36 @@ api.interceptors.response.use(
 export const authApi = {
   signup: async (userData) => {
     try {
+      console.log('🔄 authApi.signup - Datos recibidos:', {
+        username: userData.username,
+        email: userData.email,
+        passwordLength: userData.password?.length
+      });
+
+      // Usar la instancia api configurada en lugar de axios directamente
       const response = await api.post('/auth/signup', userData);
+      
+      console.log('✅ authApi.signup - Registro exitoso:', {
+        status: response.status,
+        hasData: !!response.data
+      });
+
       return response.data;
     } catch (error) {
+      console.error('❌ authApi.signup Error:', {
+        message: error.message,
+        response: error.response ? {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        } : 'No response',
+        request: error.config ? {
+          url: error.config.url,
+          method: error.config.method,
+          headers: error.config.headers,
+          data: error.config.data
+        } : 'No config'
+      });
       throw error.response?.data || { error: 'Error en el registro' };
     }
   },
@@ -189,19 +221,21 @@ export const authApi = {
     try {
       // Intentamos hacer logout en el backend, pero no es crítico si falla
       await api.post('/auth/logout').catch(error => {
-        // Si el error es 401 o 403, probablemente el token ya expiró o es inválido
-        // Lo cual es esperado durante el logout, así que lo manejamos silenciosamente
+        // Si el error es 401 o 403, es normal durante el logout
         if (error.response?.status === 401 || error.response?.status === 403) {
-          console.log('🔒 Token ya expirado o inválido durante logout - esto es normal');
+          console.log('🔒 Sesión cerrada exitosamente');
           return;
         }
         // Para otros errores, los registramos pero no los propagamos
         console.warn('⚠️ Error no crítico durante logout:', error.message);
       });
+      
+      // Siempre retornamos éxito ya que el logout local es lo importante
+      console.log('✅ Sesión cerrada exitosamente');
       return { success: true };
     } catch (error) {
       // No propagamos el error ya que el logout local es lo importante
-      console.log('ℹ️ Logout completado (backend opcional)');
+      console.log('✅ Sesión cerrada exitosamente');
       return { success: true };
     }
   },

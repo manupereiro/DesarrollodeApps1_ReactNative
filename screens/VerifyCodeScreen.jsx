@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -41,7 +41,7 @@ const VerifyCodeScreen = ({ navigation, route }) => {
         
         // Navegación directa e inmediata
         console.log('🔄 VerifyCodeScreen: Navegando a ResetPasswordScreen con email:', email);
-        navigation.navigate('ResetPasswordScreen', { email, code });
+        navigation.navigate('ResetPassword', { email, code });
         console.log('✅ VerifyCodeScreen: Navegación ejecutada correctamente');
       }
     } catch (error) {
@@ -88,7 +88,7 @@ const VerifyCodeScreen = ({ navigation, route }) => {
           </Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate('ForgotPasswordScreen')}
+            onPress={() => navigation.navigate('ForgotPassword')}
           >
             <Text style={styles.buttonText}>Volver</Text>
           </TouchableOpacity>
