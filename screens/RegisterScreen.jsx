@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { clearAllAuthData } from '../services/tokenStorage';
@@ -19,6 +19,8 @@ const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signup, state } = useAuth();
 
   const handleRegister = async () => {
@@ -105,9 +107,18 @@ const RegisterScreen = ({ navigation }) => {
               placeholder="Contraseña"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               editable={!state.isLoading}
             />
+            <TouchableOpacity
+              style={styles.showButton}
+              onPress={() => setShowPassword((prev) => !prev)}
+              disabled={state.isLoading}
+            >
+              <Text style={styles.showButtonText}>
+                {showPassword ? 'Ocultar' : 'Mostrar'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputContainer}>
@@ -116,9 +127,18 @@ const RegisterScreen = ({ navigation }) => {
               placeholder="Confirmar Contraseña"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry
+              secureTextEntry={!showConfirmPassword}
               editable={!state.isLoading}
             />
+            <TouchableOpacity
+              style={styles.showButton}
+              onPress={() => setShowConfirmPassword((prev) => !prev)}
+              disabled={state.isLoading}
+            >
+              <Text style={styles.showButtonText}>
+                {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -169,6 +189,17 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 15,
+    position: 'relative',
+  },
+  showButton: {
+    position: 'absolute',
+    right: 10,
+    top: 12,
+    padding: 4,
+  },
+  showButtonText: {
+    color: '#2196F3',
+    fontSize: 14,
   },
   input: {
     backgroundColor: '#fff',

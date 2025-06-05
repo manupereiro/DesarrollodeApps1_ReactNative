@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -148,13 +148,6 @@ const VerifyEmailScreen = ({ navigation, route }) => {
           <Text style={styles.linkText}>Reenviar código</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
-          disabled={state.isLoading}
-        >
-          <Text style={styles.linkText}>Volver al login</Text>
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
