@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -29,7 +32,6 @@ const LoginScreen = ({ navigation }) => {
       const credentials = { username: username.trim(), password: password.trim() };
       await login(credentials);
       console.log('✅ Login exitoso');
-      // Navegación se maneja por el contexto
     } catch (error) {
       console.log('❌ Error en login:', error);
       if (error.error === 'Account not verified' || error.message === 'Account not verified') {
@@ -56,66 +58,91 @@ const LoginScreen = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>Iniciar Sesión</Text>
+        <Image 
+          source={require('../assets/images/logo.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>De Remate</Text>
 
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Usuario"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            editable={!state.isLoading}
-          />
+          <View style={styles.inputWrapper}>
+            <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Usuario"
+              placeholderTextColor="#999"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              editable={!state.isLoading}
+            />
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            editable={!state.isLoading}
-          />
+          <View style={styles.inputWrapper}>
+            <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Contraseña"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              editable={!state.isLoading}
+            />
+            <TouchableOpacity
+              style={styles.showButton}
+              onPress={() => setShowPassword((prev) => !prev)}
+              disabled={state.isLoading}
+            >
+              <Ionicons 
+                name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                size={20} 
+                color="#999" 
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.forgotPassword}
+          onPress={() => navigation.navigate('Recupero de contraseña')}
+          disabled={state.isLoading}
+        >
+          <Text style={styles.forgotPasswordText}>Recuperar contraseña</Text>
+        </TouchableOpacity>
+
+        <LinearGradient
+          colors={['#86CDE2', '#055A85']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.loginButton, state.isLoading && styles.buttonDisabled]}
+        >
           <TouchableOpacity
-            style={styles.showButton}
-            onPress={() => setShowPassword((prev) => !prev)}
+            style={styles.loginButtonInner}
+            onPress={handleLogin}
             disabled={state.isLoading}
           >
-            <Text style={styles.showButtonText}>
-              {showPassword ? 'Ocultar' : 'Mostrar'}
-            </Text>
+            {state.isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+            )}
+          </TouchableOpacity>
+        </LinearGradient>
+
+        <View style={styles.signUpContainer}>
+          <Text style={styles.orSignUpText}>¿No tienes cuenta?</Text>
+          <TouchableOpacity
+            style={styles.signUpButton}
+            onPress={() => navigation.navigate('Register')}
+            disabled={state.isLoading}
+          >
+            <Text style={styles.signUpButtonText}>Regístrate</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[styles.button, state.isLoading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={state.isLoading}
-        >
-          {state.isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Iniciar Sesión</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('ForgotPassword')}
-          disabled={state.isLoading}
-        >
-          <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Register')}
-          disabled={state.isLoading}
-        >
-          <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -124,72 +151,103 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
-    color: '#333',
-  },
-  inputContainer: {
-    marginBottom: 15,
-    position: 'relative', // Añade esto para posicionar el botón
-  },
-  showButton: {
-    position: 'absolute',
-    right: 10,
-    top: 12,
-    padding: 4,
-  },
-  showButtonText: {
-    color: '#2196F3',
-    fontSize: 14,
-  },
-  input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  button: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 10,
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
     marginBottom: 20,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  buttonText: {
-    color: '#fff',
+  title: {
+    fontSize: 48,
+    fontWeight: '300',
     textAlign: 'center',
+    marginBottom: 80,
+    color: '#445357',
+    letterSpacing: 2,
+  },
+  inputContainer: {
+    marginBottom: 30,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingBottom: 10,
+  },
+  inputIcon: {
+    marginRight: 15,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 5,
+  },
+  showButton: {
+    padding: 5,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 40,
+  },
+  forgotPasswordText: {
+    color: '#999',
+    fontSize: 14,
+  },
+  loginButton: {
+    borderRadius: 30,
+    marginBottom: 60,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  loginButtonInner: {
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 1,
   },
-  linkButton: {
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  signUpContainer: {
+    alignItems: 'center',
+  },
+  orSignUpText: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 15,
+  },
+  signUpButton: {
     paddingVertical: 10,
   },
-  linkText: {
-    color: '#2196F3',
-    textAlign: 'center',
-    fontSize: 14,
+  signUpButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   loadingText: {
     marginTop: 15,

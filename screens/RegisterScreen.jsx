@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -76,90 +79,123 @@ const RegisterScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={styles.title}>Crear Cuenta</Text>
-          
+          <Image 
+            source={require('../assets/images/register.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Usuario"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              editable={!state.isLoading}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Usuario"
+                placeholderTextColor="#999"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                editable={!state.isLoading}
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!state.isLoading}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Correo Electrónico"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!state.isLoading}
+              />
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!state.isLoading}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Contraseña"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                editable={!state.isLoading}
+              />
+              <TouchableOpacity
+                style={styles.showButton}
+                onPress={() => setShowPassword((prev) => !prev)}
+                disabled={state.isLoading}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#999" 
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirmar Contraseña"
+                placeholderTextColor="#999"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                editable={!state.isLoading}
+              />
+              <TouchableOpacity
+                style={styles.showButton}
+                onPress={() => setShowConfirmPassword((prev) => !prev)}
+                disabled={state.isLoading}
+              >
+                <Ionicons 
+                  name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#999" 
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <LinearGradient
+            colors={['#86CDE2', '#055A85']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.registerButton, state.isLoading && styles.buttonDisabled]}
+          >
             <TouchableOpacity
-              style={styles.showButton}
-              onPress={() => setShowPassword((prev) => !prev)}
+              style={styles.registerButtonInner}
+              onPress={handleRegister}
               disabled={state.isLoading}
             >
-              <Text style={styles.showButtonText}>
-                {showPassword ? 'Ocultar' : 'Mostrar'}
-              </Text>
+              {state.isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.registerButtonText}>Registrarse</Text>
+              )}
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Confirmar Contraseña"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              editable={!state.isLoading}
-            />
+          <View style={styles.loginContainer}>
+            <Text style={styles.orLoginText}>¿Ya tienes cuenta?</Text>
             <TouchableOpacity
-              style={styles.showButton}
-              onPress={() => setShowConfirmPassword((prev) => !prev)}
+              style={styles.loginButton}
+              onPress={() => navigation.navigate('Login')}
               disabled={state.isLoading}
             >
-              <Text style={styles.showButtonText}>
-                {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
-              </Text>
+              <Text style={styles.loginButtonText}>Inicia Sesión</Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[styles.button, state.isLoading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={state.isLoading}
-          >
-            {state.isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Registrarse</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-            disabled={state.isLoading}
-          >
-            <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia sesión</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -169,7 +205,7 @@ const RegisterScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -177,62 +213,78 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 40,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
-    color: '#333',
-  },
-  inputContainer: {
-    marginBottom: 15,
-    position: 'relative',
-  },
-  showButton: {
-    position: 'absolute',
-    right: 10,
-    top: 12,
-    padding: 4,
-  },
-  showButtonText: {
-    color: '#2196F3',
-    fontSize: 14,
-  },
-  input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  button: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 10,
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
     marginBottom: 20,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  inputContainer: {
+    marginBottom: 30,
   },
-  buttonText: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingBottom: 10,
+  },
+  inputIcon: {
+    marginRight: 15,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 5,
+  },
+  showButton: {
+    padding: 5,
+  },
+  registerButton: {
+    borderRadius: 30,
+    marginTop: 20,
+    marginBottom: 40,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  registerButtonInner: {
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerButtonText: {
     color: '#fff',
-    textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 1,
   },
-  linkButton: {
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loginContainer: {
+    alignItems: 'center',
+  },
+  orLoginText: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 15,
+  },
+  loginButton: {
     paddingVertical: 10,
   },
-  linkText: {
-    color: '#2196F3',
-    textAlign: 'center',
-    fontSize: 14,
+  loginButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });
 

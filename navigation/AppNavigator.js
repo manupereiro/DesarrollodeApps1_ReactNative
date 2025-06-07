@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,13 +39,7 @@ const MainTabs = () => {
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
         },
-        headerStyle: {
-          backgroundColor: '#2196F3',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerShown: false, // Hide all tab headers
       }}
     >
       <Tab.Screen
@@ -77,55 +71,44 @@ const AppStack = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#2196F3' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerShown: false, // Hide all stack headers
       }}
     >
       <Stack.Screen
         name="MainTabs"
         component={MainTabs}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AvailableRoutes"
         component={AvailableRoutes}
-        options={{ title: 'Rutas Disponibles' }}
       />
       <Stack.Screen
         name="MyRoutes"
         component={MyRoutes}
-        options={{ title: 'Mis Rutas' }}
       />
       <Stack.Screen
         name="RouteHistory"
         component={RouteHistoryScreen}
-        options={{ title: 'Historial de Rutas' }}
       />
       <Stack.Screen
         name="RouteDetails"
         component={RouteDetailsScreen}
-        options={{ title: 'Detalles de la Ruta' }}
       />
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Mi Perfil' }}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: 'Configuración' }}
       />
       <Stack.Screen
         name="OrderHistory"
         component={OrderHistoryScreen}
-        options={{ title: 'Historial de Pedidos' }}
       />
       <Stack.Screen
         name="OrderDetails"
         component={OrderDetailsScreen}
-        options={{ title: 'Detalles del Pedido' }}
       />
     </Stack.Navigator>
   );
@@ -136,22 +119,19 @@ const AuthStackWithInitial = ({ initialRouteName, pendingVerification }) => (
   <Stack.Navigator
     initialRouteName={initialRouteName}
     screenOptions={{
-      headerStyle: { backgroundColor: '#2196F3' },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' },
+      headerShown: false, // Hide all auth headers
     }}
   >
-    <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar Sesión' }} />
-    <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro' }} />
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Register" component={RegisterScreen} />
     <Stack.Screen
       name="VerifyEmail"
       component={VerifyEmailScreen}
-      options={{ title: 'Verificar Email' }}
       initialParams={pendingVerification ? { email: pendingVerification } : undefined}
     />
-    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Recuperar Contraseña' }} />
-    <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} options={{ title: 'Verificar Código' }} />
-    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nueva Contraseña' }} />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
+    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
   </Stack.Navigator>
 );
 
