@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import LottieView from 'lottie-react-native';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,11 +21,29 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { login, state } = useAuth();
+  
+  // Referencias para animaciones
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const lottieRef = useRef(null);
+
+  useEffect(() => {
+    // Animación de fade-in al cargar la pantalla
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
+    }
+
+    // Reproducir animación mientras se está logueando
+    if (lottieRef.current) {
+      lottieRef.current.play();
     }
 
     try {
@@ -57,12 +76,19 @@ const LoginScreen = ({ navigation }) => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <Image 
-          source={require('../assets/images/logo.png')} 
-          style={styles.logo}
-          resizeMode="contain"
-        />
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        {/* Animación Lottie */}
+        <View style={styles.animationContainer}>
+          <LottieView
+            ref={lottieRef}
+            source={require('../assets/animations/login-animation.json')}
+            style={styles.animation}
+            autoPlay
+            loop
+            speed={state.isLoading ? 1.5 : 1} // Acelerar cuando está cargando
+          />
+        </View>
+        
         <Text style={styles.title}>De Remate</Text>
 
         <View style={styles.inputContainer}>
@@ -108,7 +134,7 @@ const LoginScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.forgotPassword}
-          onPress={() => navigation.navigate('Recupero de contraseña')}
+          onPress={() => navigation.navigate('ForgotPassword')}
           disabled={state.isLoading}
         >
           <Text style={styles.forgotPasswordText}>Recuperar contraseña</Text>
@@ -143,7 +169,7 @@ const LoginScreen = ({ navigation }) => {
             <Text style={styles.signUpButtonText}>Regístrate</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 };
@@ -159,17 +185,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingTop: 60,
   },
-  logo: {
-    width: 120,
-    height: 120,
-    alignSelf: 'center',
-    marginBottom: 20,
+  animationContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  animation: {
+    width: 200,
+    height: 200,
   },
   title: {
     fontSize: 48,
     fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 80,
+    marginBottom: 60,
     color: '#445357',
     letterSpacing: 2,
   },
