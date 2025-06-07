@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 // Pantallas
@@ -27,17 +27,48 @@ import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Componente para el botón QR personalizado
+const QRButton = ({ onPress }) => {
+  return (
+    <TouchableOpacity
+      style={styles.qrButton}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.qrButtonInner}>
+        <MaterialIcons name="qr-code-scanner" size={30} color="#fff" />
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// Pantalla temporal para el QR (para implementar después)
+const QRScreen = () => {
+  return (
+    <View style={styles.qrScreenContainer}>
+      <MaterialIcons name="qr-code-scanner" size={100} color="#055A85" />
+      <Text style={styles.qrScreenText}>Escáner QR</Text>
+      <Text style={styles.qrScreenSubtext}>Funcionalidad próximamente</Text>
+    </View>
+  );
+};
+
+
+
 // Tabs principales (autenticado)
 const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
+        tabBarActiveTintColor: '#055A85',
         tabBarInactiveTintColor: '#757575',
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
+          height: 70,
+          paddingBottom: 10,
+          paddingTop: 10,
         },
         headerShown: false, // Hide all tab headers
       }}
@@ -50,6 +81,17 @@ const MainTabs = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={size} color={color} />
           ),
+        }}
+      />
+      <Tab.Screen
+        name="QRScanner"
+        component={QRScreen}
+        options={{
+          title: '',
+          tabBarButton: (props) => (
+            <QRButton onPress={props.onPress} />
+          ),
+          tabBarLabel: () => null,
         }}
       />
       <Tab.Screen
@@ -180,6 +222,48 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
+  },
+  qrButton: {
+    top: -25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 70,
+    height: 70,
+  },
+  qrButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#055A85',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  qrScreenContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  qrScreenText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#055A85',
+    marginTop: 20,
+  },
+  qrScreenSubtext: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
   },
 });
 
