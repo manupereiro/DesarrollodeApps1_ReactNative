@@ -152,9 +152,6 @@ export const AuthProvider = ({ children }) => {
       // Primero limpiamos el almacenamiento local
       await TokenStorage.clearAll();
       
-      // Luego intentamos el logout en el backend (manejado silenciosamente)
-      await authApi.logout();
-      
       // Finalmente actualizamos el estado
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
       

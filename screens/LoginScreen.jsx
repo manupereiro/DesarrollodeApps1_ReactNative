@@ -41,11 +41,6 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    // No manipular la animación manualmente, ya que está en autoPlay
-    // if (lottieRef.current) {
-    //   lottieRef.current.play();
-    // }
-
     try {
       console.log('🔄 Intentando login con username:', username);
       const credentials = { username: username.trim(), password: password.trim() };

@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 const HomeScreen = () => {
-  const { logout, user } = useAuth();
+  const { signOut, user } = useAuth(); 
   const navigation = useNavigation();
 
   const handleLogout = () => {
@@ -26,7 +26,7 @@ const HomeScreen = () => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: logout,
+          onPress: signOut, 
         },
       ]
     );
@@ -270,4 +270,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen; 
+export default HomeScreen;
