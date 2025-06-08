@@ -10,6 +10,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 
 const VerifyCodeScreen = ({ navigation, route }) => {
@@ -104,41 +106,50 @@ const VerifyCodeScreen = ({ navigation, route }) => {
     >
       <View style={styles.content}>
         <Text style={styles.title}>{getTitle()}</Text>
-        
         <Text style={styles.subtitle}>{getSubtitle()}</Text>
         <Text style={styles.email}>{email}</Text>
-        
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Código de 6 dígitos"
-            value={code}
-            onChangeText={setCode}
-            keyboardType="numeric"
-            maxLength={6}
-            editable={!state.isLoading}
-          />
+          <View style={styles.inputWrapper}>
+            <Ionicons name="key-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Código de 6 dígitos"
+              placeholderTextColor="#999"
+              value={code}
+              onChangeText={setCode}
+              keyboardType="numeric"
+              maxLength={6}
+              editable={!state.isLoading}
+            />
+          </View>
         </View>
-
-        <TouchableOpacity
+        <LinearGradient
+          colors={['#86CDE2', '#055A85']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
           style={[styles.button, state.isLoading && styles.buttonDisabled]}
-          onPress={handleVerifyCode}
-          disabled={state.isLoading}
         >
-          {state.isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Verificar Código</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={handleResendCode}
-          disabled={state.isLoading}
-        >
-          <Text style={styles.linkText}>Reenviar código</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.buttonInner}
+            onPress={handleVerifyCode}
+            disabled={state.isLoading}
+          >
+            {state.isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Verificar Código</Text>
+            )}
+          </TouchableOpacity>
+        </LinearGradient>
+        <View style={styles.signInContainer}>
+          <TouchableOpacity
+            style={styles.signInButton}
+            onPress={handleResendCode}
+            disabled={state.isLoading}
+          >
+            <Text style={styles.signInButtonText}>Reenviar código</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -147,24 +158,26 @@ const VerifyCodeScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+    marginBottom: 10,
+    color: '#445357',
+    letterSpacing: 2,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 20,
     color: '#666',
   },
   email: {
@@ -175,43 +188,61 @@ const styles = StyleSheet.create({
     color: '#2196F3',
   },
   inputContainer: {
-    marginBottom: 15,
+    marginBottom: 30,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingBottom: 10,
+  },
+  inputIcon: {
+    marginRight: 15,
   },
   input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flex: 1,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    color: '#333',
+    paddingVertical: 5,
     textAlign: 'center',
     letterSpacing: 2,
   },
   button: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 20,
+    borderRadius: 30,
+    marginBottom: 60,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  buttonInner: {
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',
-    textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 1,
   },
-  linkButton: {
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  signInContainer: {
+    alignItems: 'center',
+  },
+  signInButton: {
     paddingVertical: 10,
   },
-  linkText: {
-    color: '#2196F3',
-    textAlign: 'center',
-    fontSize: 14,
+  signInButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });
 
-export default VerifyCodeScreen; 
+export default VerifyCodeScreen;

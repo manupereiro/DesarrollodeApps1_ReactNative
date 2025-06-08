@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     borderRadius: 30,
-    marginBottom: 60,
+    marginBottom: 20, // Antes: 60
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

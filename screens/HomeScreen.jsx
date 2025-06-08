@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 const HomeScreen = () => {
-  const { signOut, user } = useAuth(); 
+  const { logout, user } = useAuth(); 
   const navigation = useNavigation();
 
   const handleLogout = () => {
@@ -26,7 +26,7 @@ const HomeScreen = () => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: signOut, 
+          onPress: logout, 
         },
       ]
     );
@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: 'transparent',
+    paddingTop: 40, // <--- Agrega o aumenta este valor (por ejemplo 40)
   },
   headerTitle: {
     fontSize: 24,

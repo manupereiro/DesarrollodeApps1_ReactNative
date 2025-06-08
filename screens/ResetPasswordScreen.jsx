@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -17,6 +19,8 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   const { email, code } = route.params || {};
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { resetPassword, state } = useAuth();
 
   console.log('ResetPasswordScreen renderizada con:', { email, code });
@@ -107,32 +111,59 @@ const ResetPasswordScreen = ({ navigation, route }) => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>Nueva Contraseña</Text>
-          
           <Text style={styles.subtitle}>
             Ingresa tu nueva contraseña para la cuenta:
           </Text>
           <Text style={styles.email}>{email}</Text>
-          
+
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Nueva contraseña"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              editable={!state.isLoading}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Nueva contraseña"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry={!showNewPassword}
+                editable={!state.isLoading}
+              />
+              <TouchableOpacity
+                style={styles.showButton}
+                onPress={() => setShowNewPassword((prev) => !prev)}
+                disabled={state.isLoading}
+              >
+                <Ionicons
+                  name={showNewPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#999"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Confirmar nueva contraseña"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              editable={!state.isLoading}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirmar nueva contraseña"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                editable={!state.isLoading}
+              />
+              <TouchableOpacity
+                style={styles.showButton}
+                onPress={() => setShowConfirmPassword((prev) => !prev)}
+                disabled={state.isLoading}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#999"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.passwordRequirements}>
@@ -142,17 +173,24 @@ const ResetPasswordScreen = ({ navigation, route }) => {
             <Text style={styles.requirementText}>• Debe contener al menos una letra</Text>
           </View>
 
-          <TouchableOpacity
+          <LinearGradient
+            colors={['#86CDE2', '#055A85']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
             style={[styles.button, state.isLoading && styles.buttonDisabled]}
-            onPress={handleResetPassword}
-            disabled={state.isLoading}
           >
-            {state.isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Cambiar Contraseña</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.buttonInner}
+              onPress={handleResetPassword}
+              disabled={state.isLoading}
+            >
+              {state.isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Cambiar Contraseña</Text>
+              )}
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -162,7 +200,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -170,15 +208,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+    marginBottom: 10,
+    color: '#445357',
+    letterSpacing: 2,
   },
   subtitle: {
     fontSize: 16,
@@ -196,14 +235,25 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 15,
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingBottom: 10,
     backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
     borderRadius: 8,
+    marginBottom: 10,
+  },
+  inputIcon: {
+    marginRight: 15,
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    color: '#333',
+    paddingVertical: 5,
+    backgroundColor: '#fff',
   },
   passwordRequirements: {
     backgroundColor: '#f0f8ff',
@@ -225,21 +275,31 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   button: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 20,
+    borderRadius: 30,
+    marginBottom: 40,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  buttonInner: {
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',
-    textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  showButton: {
+    padding: 5,
   },
 });
 
-export default ResetPasswordScreen; 
+export default ResetPasswordScreen;

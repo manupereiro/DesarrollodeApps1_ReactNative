@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 
 const VerifyEmailScreen = ({ navigation, route }) => {
@@ -17,26 +19,17 @@ const VerifyEmailScreen = ({ navigation, route }) => {
   const [verificationCode, setVerificationCode] = useState('');
   const { verifyAccount, resendCode, state } = useAuth();
 
-  console.log('VerifyEmailScreen renderizada con email:', email);
-  console.log('🔍 VerifyEmailScreen: isAuthenticated =', !!state.userToken);
-
   const handleVerify = async () => {
     if (!verificationCode.trim()) {
       Alert.alert('Error', 'Por favor ingresa el código de verificación');
       return;
     }
-
     if (!email) {
       Alert.alert('Error', 'Email no encontrado');
       return;
     }
-
     try {
-      console.log('🔄 Enviando verificación con:', { email, verificationCode });
       const response = await verifyAccount({ email, verificationCode });
-      console.log('✅ Respuesta de verificación:', response);
-
-      // Si la verificación incluye token, se loguea automáticamente
       if (response.token) {
         Alert.alert(
           'Verificación exitosa',
@@ -44,9 +37,7 @@ const VerifyEmailScreen = ({ navigation, route }) => {
           [
             {
               text: 'OK',
-              onPress: () => {
-                console.log('🎯 Usuario logueado automáticamente después de verificación');
-              },
+              onPress: () => {},
             },
           ]
         );
@@ -63,7 +54,6 @@ const VerifyEmailScreen = ({ navigation, route }) => {
         );
       }
     } catch (error) {
-      console.error('❌ Error en verificación:', error);
       const errorMessage = error.error || error.message || 'Código de verificación inválido';
       Alert.alert('Error', errorMessage);
     }
@@ -74,7 +64,6 @@ const VerifyEmailScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'Email no encontrado');
       return;
     }
-
     try {
       await resendCode({ email, codeType: 'verification' });
       Alert.alert('Código reenviado', 'Se ha enviado un nuevo código a tu email');
@@ -110,35 +99,44 @@ const VerifyEmailScreen = ({ navigation, route }) => {
     >
       <View style={styles.content}>
         <Text style={styles.title}>Verificar Email</Text>
-
         <Text style={styles.subtitle}>
           Hemos enviado un código de verificación a:
         </Text>
         <Text style={styles.email}>{email}</Text>
 
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Código de verificación"
-            value={verificationCode}
-            onChangeText={setVerificationCode}
-            keyboardType="numeric"
-            maxLength={6}
-            editable={!state.isLoading}
-          />
+          <View style={styles.inputWrapper}>
+            <Ionicons name="key-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Código de verificación"
+              value={verificationCode}
+              onChangeText={setVerificationCode}
+              keyboardType="numeric"
+              maxLength={6}
+              editable={!state.isLoading}
+            />
+          </View>
         </View>
 
-        <TouchableOpacity
+        <LinearGradient
+          colors={['#86CDE2', '#055A85']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
           style={[styles.button, state.isLoading && styles.buttonDisabled]}
-          onPress={handleVerify}
-          disabled={state.isLoading}
         >
-          {state.isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Verificar</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.buttonInner}
+            onPress={handleVerify}
+            disabled={state.isLoading}
+          >
+            {state.isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Verificar</Text>
+            )}
+          </TouchableOpacity>
+        </LinearGradient>
 
         <TouchableOpacity
           style={styles.linkButton}
@@ -147,7 +145,6 @@ const VerifyEmailScreen = ({ navigation, route }) => {
         >
           <Text style={styles.linkText}>Reenviar código</Text>
         </TouchableOpacity>
-
       </View>
     </KeyboardAvoidingView>
   );
@@ -156,19 +153,21 @@ const VerifyEmailScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+    marginBottom: 10,
+    color: '#445357',
+    letterSpacing: 2,
   },
   subtitle: {
     fontSize: 16,
@@ -184,34 +183,50 @@ const styles = StyleSheet.create({
     color: '#2196F3',
   },
   inputContainer: {
-    marginBottom: 15,
+    marginBottom: 30,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  inputIcon: {
+    marginRight: 15,
   },
   input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flex: 1,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    textAlign: 'center',
-    letterSpacing: 2,
+    color: '#333',
+    paddingVertical: 5,
+    backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 15,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 20,
+    borderRadius: 30,
+    marginBottom: 40,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
+  buttonInner: {
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',
-    textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   linkButton: {
     paddingVertical: 10,
