@@ -41,10 +41,10 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    // Reproducir animación mientras se está logueando
-    if (lottieRef.current) {
-      lottieRef.current.play();
-    }
+    // No manipular la animación manualmente, ya que está en autoPlay
+    // if (lottieRef.current) {
+    //   lottieRef.current.play();
+    // }
 
     try {
       console.log('🔄 Intentando login con username:', username);
@@ -81,11 +81,16 @@ const LoginScreen = ({ navigation }) => {
         <View style={styles.animationContainer}>
           <LottieView
             ref={lottieRef}
-            source={require('../assets/animations/login-animation.json')}
+            source={require('../assets/animations/truck.json')}
             style={styles.animation}
-            autoPlay
-            loop
-            speed={state.isLoading ? 1.5 : 1} // Acelerar cuando está cargando
+            autoPlay={true}
+            loop={true}
+            speed={state.isLoading ? 1.5 : 1}
+            resizeMode="contain"
+            renderMode="HARDWARE"
+            cacheComposition={true}
+            hardwareAccelerationAndroid={true}
+            colorFilters={[]}
           />
         </View>
         
@@ -190,8 +195,8 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   animation: {
-    width: 200,
-    height: 200,
+    width: 280,
+    height: 280,
   },
   title: {
     fontSize: 48,
