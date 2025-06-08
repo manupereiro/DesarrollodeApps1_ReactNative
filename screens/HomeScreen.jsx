@@ -32,31 +32,38 @@ const HomeScreen = () => {
     );
   };  return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={28} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>De Remate</Text>
-          <View style={styles.headerRightButtons}>
+      <LinearGradient
+        colors={['#86CDE2', '#055A85']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.header}>
             <TouchableOpacity 
-              style={styles.profileButton}
-              onPress={() => navigation.navigate('Profile')}
+              style={styles.settingsButton}
+              onPress={() => navigation.navigate('Settings')}
             >
-              <Ionicons name="person-circle-outline" size={28} color="#fff" />
+              <Ionicons name="settings-outline" size={28} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <Ionicons name="log-out-outline" size={28} color="#fff" />
-            </TouchableOpacity>
+            <Text style={styles.headerTitle}>De Remate</Text>
+            <View style={styles.headerRightButtons}>
+              <TouchableOpacity 
+                style={styles.profileButton}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <Ionicons name="person-circle-outline" size={28} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
@@ -125,10 +132,17 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#055A85',
+    backgroundColor: '#fff',
+  },
+  headerGradient: {
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   safeArea: {
-    backgroundColor: '#055A85',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -136,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#055A85',
+    backgroundColor: 'transparent',
   },
   headerTitle: {
     fontSize: 24,
