@@ -11,12 +11,37 @@ import {
 } from 'react-native';
 
 const RouteDetailsScreen = ({ route, navigation }) => {
-  const { routeData } = route.params;
+  const { routeData } = route.params || {};
 
   const handleOpenMaps = (address) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
     Linking.openURL(url);
   };
+
+  // Si no hay datos de la ruta, mostrar mensaje de error
+  if (!routeData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalles de la Ruta</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#666" />
+          <Text style={styles.errorText}>No se encontraron datos de la ruta</Text>
+          <TouchableOpacity style={styles.goBackButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.goBackButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,10 +63,16 @@ const RouteDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.statusText}>Completada</Text>
           </View>
           <Text style={styles.dateText}>
-            {new Date(routeData.completedAt || routeData.updatedAt).toLocaleDateString()}
+            {routeData.completedAt || routeData.updatedAt ? 
+              new Date(routeData.completedAt || routeData.updatedAt).toLocaleDateString() : 
+              'Fecha no disponible'
+            }
           </Text>
           <Text style={styles.timeText}>
-            {new Date(routeData.completedAt || routeData.updatedAt).toLocaleTimeString()}
+            {routeData.completedAt || routeData.updatedAt ? 
+              new Date(routeData.completedAt || routeData.updatedAt).toLocaleTimeString() : 
+              'Hora no disponible'
+            }
           </Text>
         </View>
 
@@ -54,7 +85,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
           >
             <View style={styles.addressHeader}>
               <Ionicons name="location" size={24} color="#2196F3" />
-              <Text style={styles.addressText}>{routeData.origin}</Text>
+              <Text style={styles.addressText}>{routeData.origin || 'Origen no disponible'}</Text>
             </View>
             <Text style={styles.openMapsText}>Abrir en Maps</Text>
           </TouchableOpacity>
@@ -69,7 +100,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
           >
             <View style={styles.addressHeader}>
               <Ionicons name="flag" size={24} color="#2196F3" />
-              <Text style={styles.addressText}>{routeData.destination}</Text>
+              <Text style={styles.addressText}>{routeData.destination || 'Destino no disponible'}</Text>
             </View>
             <Text style={styles.openMapsText}>Abrir en Maps</Text>
           </TouchableOpacity>
@@ -84,7 +115,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
                 <Ionicons name="speedometer" size={24} color="#666" />
                 <View style={styles.detailTextContainer}>
                   <Text style={styles.detailLabel}>Distancia</Text>
-                  <Text style={styles.detailValue}>{routeData.distance} km</Text>
+                  <Text style={styles.detailValue}>{routeData.distance || 'N/A'} km</Text>
                 </View>
               </View>
               <View style={styles.detailItem}>
@@ -114,13 +145,16 @@ const RouteDetailsScreen = ({ route, navigation }) => {
             <View style={styles.infoRow}>
               <Ionicons name="calendar" size={20} color="#666" />
               <Text style={styles.infoText}>
-                Fecha de asignación: {new Date(routeData.createdAt).toLocaleDateString()}
+                Fecha de asignación: {routeData.createdAt ? 
+                  new Date(routeData.createdAt).toLocaleDateString() : 
+                  'No disponible'
+                }
               </Text>
             </View>
             <View style={styles.infoRow}>
               <Ionicons name="checkmark-circle" size={20} color="#666" />
               <Text style={styles.infoText}>
-                Estado: {routeData.status}
+                Estado: {routeData.status || 'No disponible'}
               </Text>
             </View>
             {routeData.completedAt && (
@@ -298,6 +332,30 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 12,
     flex: 1,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  goBackButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  goBackButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

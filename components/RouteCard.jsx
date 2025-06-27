@@ -1,20 +1,23 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION, BUTTON_STYLES } from '../config/constants';
 
-const RouteCard = ({ route, onSelect, onCancel, onComplete, showActions = true }) => {
+const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, showActions = true }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'AVAILABLE':
-        return '#4CAF50';
+        return COLORS.success;
       case 'ASSIGNED':
-        return '#2196F3';
+        return COLORS.primary;
       case 'IN_PROGRESS':
-        return '#FFC107';
+        return COLORS.warning;
       case 'COMPLETED':
-        return '#9E9E9E';
+        return COLORS.gray;
+      case 'CANCELLED':
+        return COLORS.error;
       default:
-        return '#757575';
+        return COLORS.textSecondary;
     }
   };
 
@@ -28,46 +31,75 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, showActions = true }
         return 'En Progreso';
       case 'COMPLETED':
         return 'Completada';
+      case 'CANCELLED':
+        return 'Cancelada';
       default:
         return status;
     }
   };
 
+  const getStatusBadgeStyle = (status) => {
+    const color = getStatusColor(status);
+    return {
+      backgroundColor: `${color}15`, // 15% opacity
+      borderColor: color,
+    };
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.statusContainer}>
+        <View style={[styles.statusBadge, getStatusBadgeStyle(route.status)]}>
           <View
             style={[
               styles.statusIndicator,
               { backgroundColor: getStatusColor(route.status) },
             ]}
           />
-          <Text style={styles.statusText}>{getStatusText(route.status)}</Text>
+          <Text style={[styles.statusText, { color: getStatusColor(route.status) }]}>
+            {getStatusText(route.status)}
+          </Text>
         </View>
       </View>
 
       <View style={styles.content}>
         <View style={styles.routeInfo}>
           <View style={styles.locationContainer}>
-            <MaterialIcons name="location-on" size={20} color="#757575" />
-            <Text style={styles.locationText}>{route.origin}</Text>
+            <View style={styles.iconContainer}>
+              <MaterialIcons name="location-on" size={18} color={COLORS.success} />
+            </View>
+            <View style={styles.locationTextContainer}>
+              <Text style={styles.locationLabel}>Origen</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{route.origin}</Text>
+            </View>
           </View>
+          
+          <View style={styles.routeArrow}>
+            <MaterialIcons name="keyboard-arrow-down" size={20} color={COLORS.textSecondary} />
+          </View>
+          
           <View style={styles.locationContainer}>
-            <MaterialIcons name="flag" size={20} color="#757575" />
-            <Text style={styles.locationText}>{route.destination}</Text>
+            <View style={styles.iconContainer}>
+              <MaterialIcons name="flag" size={18} color={COLORS.error} />
+            </View>
+            <View style={styles.locationTextContainer}>
+              <Text style={styles.locationLabel}>Destino</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{route.destination}</Text>
+            </View>
           </View>
         </View>
 
+        <View style={styles.divider} />
+
         <View style={styles.details}>
           <View style={styles.detailItem}>
-            <MaterialIcons name="straighten" size={20} color="#757575" />
+            <MaterialIcons name="straighten" size={16} color={COLORS.textSecondary} />
             <Text style={styles.detailText}>{route.distance} km</Text>
           </View>
           <View style={styles.detailItem}>
-            <MaterialIcons name="access-time" size={20} color="#757575" />
+            <MaterialIcons name="access-time" size={16} color={COLORS.textSecondary} />
             <Text style={styles.detailText}>
-              {route.estimatedDuration ? `${route.estimatedDuration} mins` : 'No disponible'}
+              {route.estimatedDuration ? `${route.estimatedDuration} min` : 'N/A'}
             </Text>
           </View>
         </View>
@@ -80,20 +112,23 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, showActions = true }
               style={[styles.button, styles.selectButton]}
               onPress={() => onSelect(route.id)}
             >
+              <MaterialIcons name="add-road" size={16} color={COLORS.textOnPrimary} />
               <Text style={styles.buttonText}>Elegir Ruta</Text>
             </TouchableOpacity>
           ) : (route.status === 'ASSIGNED' || route.status === 'IN_PROGRESS') ? (
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={[styles.button, styles.completeButton]}
-                onPress={() => onComplete(route.id)}
+                onPress={() => onNavigateToCode ? onNavigateToCode(route) : onComplete(route.id)}
               >
+                <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />
                 <Text style={styles.buttonText}>Completar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => onCancel(route.id)}
               >
+                <MaterialIcons name="cancel" size={16} color={COLORS.textOnPrimary} />
                 <Text style={styles.buttonText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
@@ -106,94 +141,134 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, showActions = true }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginVertical: 8,
-    marginHorizontal: 16,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    marginVertical: SPACING.xs,
+    marginHorizontal: SPACING.md,
+    padding: SPACING.md,
+    ...ELEVATION.low,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
-  statusContainer: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
   },
   statusIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 6,
+    marginRight: SPACING.xs,
   },
   statusText: {
-    fontSize: 14,
-    color: '#757575',
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
   },
   content: {
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   routeInfo: {
-    marginBottom: 12,
+    marginBottom: SPACING.sm,
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.xs,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.lightGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  locationTextContainer: {
+    flex: 1,
+  },
+  locationLabel: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs / 2,
+    fontWeight: '500',
   },
   locationText: {
-    fontSize: 16,
-    color: '#212121',
-    marginLeft: 8,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  routeArrow: {
+    alignItems: 'center',
+    marginVertical: SPACING.xs,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.divider,
+    marginVertical: SPACING.sm,
   },
   details: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: BORDER_RADIUS.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   detailText: {
-    fontSize: 14,
-    color: '#757575',
-    marginLeft: 4,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.xs,
+    fontWeight: '500',
   },
   actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    marginTop: SPACING.sm,
   },
   button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-    minWidth: 100,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    minHeight: 44, // Para mejor accesibilidad
+    ...ELEVATION.low,
   },
   selectButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: COLORS.primary,
+  },
+  completeButton: {
+    backgroundColor: COLORS.success,
+    flex: 1,
+    marginRight: SPACING.xs,
   },
   cancelButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: COLORS.error,
+    flex: 1,
+    marginLeft: SPACING.xs,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.sm,
     fontWeight: 'bold',
+    marginLeft: SPACING.xs,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  completeButton: {
-    backgroundColor: '#4CAF50',
   },
 });
 

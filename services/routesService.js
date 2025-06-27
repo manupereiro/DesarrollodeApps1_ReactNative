@@ -2,141 +2,241 @@ import axios from 'axios';
 import { getApiConfig } from '../config/apiConfig';
 import TokenStorage from './tokenStorage';
 
-const api = axios.create(getApiConfig());
+// Crear instancia con configuración mejorada
+const createApiInstance = async () => {
+  const config = getApiConfig();
+  const token = await TokenStorage.getToken();
+  
+  return axios.create({
+    ...config,
+    headers: {
+      ...config.headers,
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+};
 
-// Interceptor para agregar el token a las requests
-api.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await TokenStorage.getToken();
-      console.log('🔑 routesService - Token disponible:', token ? 'Sí' : 'No');
-      if (token) {
-        // Log detallado del token
-        const tokenParts = token.split('.');
-        console.log('🔑 routesService - Token details:', {
-          header: tokenParts[0],
-          payload: tokenParts[1],
-          signature: tokenParts[2] ? 'Presente' : 'Ausente',
-          length: token.length,
-          fullToken: token
-        });
+// Pool de requests en progreso para evitar duplicados
+const requestsInProgress = new Map();
 
-        config.headers.Authorization = `Bearer ${token}`;
-        console.log('🔑 routesService - Headers de la petición:', {
-          url: config.url,
-          method: config.method,
-          headers: {
-            ...config.headers,
-            Authorization: 'Bearer [TOKEN]' // Ocultamos el token real en los logs
-          }
-        });
-      } else {
-        console.warn('⚠️ routesService - No se encontró token para la petición');
+// Función para hacer requests con retry y deduplicación
+const makeRequest = async (requestKey, requestFn, maxRetries = 3) => {
+  // Evitar requests duplicados
+  if (requestsInProgress.has(requestKey)) {
+    console.log('🔄 routesService - Request ya en progreso, evitando duplicado:', requestKey);
+    return requestsInProgress.get(requestKey);
+  }
+
+  const requestPromise = (async () => {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 routesService - Intento ${attempt}/${maxRetries} para:`, requestKey);
+        
+        const api = await createApiInstance();
+        const result = await requestFn(api);
+        
+        console.log('✅ routesService - Request exitoso:', requestKey);
+        return result;
+        
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ routesService - Error en intento ${attempt}:`, error.message);
+        
+        // Manejar errores de autenticación de forma MUY permisiva
+        const status = error.response?.status;
+        if (status === 401) {
+          console.log('🔑 routesService - Error 401, pero continuando...');
+          // NO limpiar tokens automáticamente - solo loguear
+        } else if (status === 403) {
+          console.log('🔑 routesService - Error 403, pero continuando...');
+          // NO limpiar tokens automáticamente - solo loguear
+        }
+        
+        // No reintentar otros errores 4xx
+        if (status && status >= 400 && status < 500) {
+          console.log('🚫 routesService - Error no reintentable:', status);
+          break;
+        }
+        
+        // Si es el último intento, salir
+        if (attempt === maxRetries) break;
+        
+        // Delay exponencial
+        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
       }
-    } catch (error) {
-      console.error('❌ routesService - Error en interceptor:', error);
     }
-    return config;
-  },
-  (error) => {
-    console.error('❌ routesService - Error en interceptor de request:', error);
-    return Promise.reject(error);
-  }
-);
+    
+    throw lastError;
+  })();
 
-// Interceptor para manejar respuestas
-api.interceptors.response.use(
-  (response) => {
-    console.log('✅ routesService - Respuesta exitosa:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data
-    });
-    return response;
-  },
-  (error) => {
-    console.error('❌ routesService - Error en respuesta:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-      headers: error.config?.headers
-    });
-    return Promise.reject(error);
+  requestsInProgress.set(requestKey, requestPromise);
+  
+  try {
+    const result = await requestPromise;
+    return result;
+  } finally {
+    requestsInProgress.delete(requestKey);
   }
-);
+};
+
+// Función para validar token con margen de gracia
+const validateToken = async () => {
+  try {
+    const token = await TokenStorage.getToken();
+    if (!token) {
+      console.warn('⚠️ routesService - No hay token disponible');
+      return false;
+    }
+    
+    // Verificar que el token no esté expirado
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.warn('⚠️ routesService - Token malformado');
+      return false;
+    }
+    
+    try {
+      const payload = JSON.parse(atob(tokenParts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      
+      if (payload.exp) {
+        // Agregar margen de 5 minutos (300 segundos) para evitar problemas de sincronización
+        const expirationWithBuffer = payload.exp - 300;
+        
+        if (expirationWithBuffer < now) {
+          const timeUntilExpiry = payload.exp - now;
+          console.warn(`⚠️ routesService - Token expirado o próximo a expirar (${timeUntilExpiry}s)`);
+          
+          if (typeof TokenStorage.clearAllAuthData === 'function') {
+            await TokenStorage.clearAllAuthData();
+          } else {
+            console.error('❌ routesService - clearAllAuthData no es una función en validateToken, usando clearAll como fallback');
+            await TokenStorage.clearAll();
+          }
+          
+          return false;
+        } else {
+          const timeUntilExpiry = payload.exp - now;
+          console.log(`✅ routesService - Token válido (expira en ${Math.floor(timeUntilExpiry/60)} minutos)`);
+        }
+      }
+    } catch (parseError) {
+      console.warn('⚠️ routesService - Error al parsear token:', parseError);
+      return false;
+    }
+    
+    console.log('✅ routesService - Token válido');
+    return true;
+  } catch (error) {
+    console.error('❌ routesService - Error validando token:', error);
+    return false;
+  }
+};
+
+// Función para verificar conectividad con el backend
+const checkBackendHealth = async () => {
+  try {
+    // Usar health check que no requiere autenticación
+    const config = getApiConfig();
+    const api = axios.create(config);
+    await api.get('/routes/health');
+    console.log('✅ routesService - Backend saludable');
+    return true;
+  } catch (error) {
+    console.warn('⚠️ routesService - Backend no disponible:', error.message);
+    return false;
+  }
+};
 
 export const routesService = {
+  // Verificar conectividad
+  checkHealth: checkBackendHealth,
+  
+  // Debug TokenStorage al inicio
+  debugTokenStorage: () => {
+    console.log('🔍 routesService - Verificando TokenStorage al inicio:');
+    TokenStorage.debugMethods();
+  },
+
   // Obtener todas las rutas disponibles
   getAvailableRoutes: async () => {
-    try {
+    const requestKey = 'getAvailableRoutes';
+    
+    return makeRequest(requestKey, async (api) => {
       console.log('🔄 routesService - Obteniendo rutas disponibles...');
       const response = await api.get('/routes/available');
       console.log('✅ routesService - Rutas disponibles obtenidas:', response.data);
       return response.data;
-    } catch (error) {
-      console.error('❌ routesService - Error al obtener rutas disponibles:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message
-      });
-      throw error.response?.data || { error: 'Error al obtener rutas disponibles' };
-    }
+    });
   },
 
   // Obtener las rutas asignadas al repartidor actual
   getMyRoutes: async () => {
-    try {
+    const requestKey = 'getMyRoutes';
+    
+    return makeRequest(requestKey, async (api) => {
       console.log('🔄 routesService - Obteniendo mis rutas...');
       const response = await api.get('/routes/my-routes');
       console.log('✅ routesService - Mis rutas obtenidas:', response.data);
       return response.data;
-    } catch (error) {
-      console.error('❌ routesService - Error al obtener mis rutas:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message
-      });
-      throw error.response?.data || { error: 'Error al obtener mis rutas' };
-    }
+    });
   },
 
   // Elegir una ruta
   selectRoute: async (routeId) => {
-    try {
+    const requestKey = `selectRoute-${routeId}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log(`🔄 routesService - Asignando ruta ${routeId}...`);
       const response = await api.post(`/routes/${routeId}/assign`);
+      console.log('✅ routesService - Ruta asignada exitosamente:', response.data);
       return response.data;
-    } catch (error) {
-      throw error.response?.data || { error: 'Error al seleccionar la ruta' };
-    }
+    });
   },
 
   // Cancelar una ruta
   cancelRoute: async (routeId) => {
-    try {
+    const requestKey = `cancelRoute-${routeId}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log(`🔄 routesService - Cancelando ruta ${routeId}...`);
       const response = await api.post(`/routes/${routeId}/cancel`);
+      console.log('✅ routesService - Ruta cancelada exitosamente:', response.data);
       return response.data;
-    } catch (error) {
-      throw error.response?.data || { error: 'Error al cancelar la ruta' };
-    }
+    });
   },
 
   // Actualizar estado de una ruta
   updateRouteStatus: async (routeId, status) => {
-    try {
+    const requestKey = `updateRouteStatus-${routeId}-${status}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      // Validación básica - solo verificar que existe un token
+      const token = await TokenStorage.getToken();
+      if (!token) {
+        throw new Error('No hay token disponible');
+      }
+      
+      console.log(`🔄 routesService - Actualizando estado de ruta ${routeId} a ${status}...`);
+      
       let endpoint;
+      let response;
+      
       if (status === 'COMPLETED') {
         endpoint = `/routes/${routeId}/complete`;
-        const response = await api.post(endpoint);
-        return response.data;
+        response = await api.post(endpoint);
       } else {
         endpoint = `/routes/${routeId}/status`;
-        const response = await api.put(endpoint, { status });
-        return response.data;
+        response = await api.put(endpoint, { status });
       }
-    } catch (error) {
-      throw error.response?.data || { error: 'Error al actualizar el estado de la ruta' };
-    }
+      
+      console.log('✅ routesService - Estado actualizado exitosamente:', response.data);
+      return response.data;
+    });
   },
 
   // Suscripción a cambios en tiempo real

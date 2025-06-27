@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
+    "get-ip": "node ./scripts/get-ip.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
@@ -21,7 +22,7 @@
     "expo": "~53.0.9",
     "expo-barcode-scanner": "^13.0.1",
     "expo-blur": "~14.1.4",
-    "expo-camera": "^16.1.7",
+    "expo-camera": "^16.1.9",
     "expo-constants": "~17.1.6",
     "expo-font": "~13.3.1",
     "expo-haptics": "~14.1.4",

@@ -4,8 +4,9 @@ import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
 import { useRoutes } from '../context/RoutesContext';
+import { COLORS, SPACING, FONT_SIZES } from '../config/constants';
 
-const MyRoutes = () => {
+const MyRoutes = ({ navigation }) => {
   const { myRoutes, loading, error, cancelRoute, updateRouteStatus } = useRoutes();
 
   // Filtrar solo las rutas activas (no completadas ni canceladas)
@@ -15,16 +16,23 @@ const MyRoutes = () => {
 
   const handleCancelRoute = async (routeId) => {
     try {
-      await cancelRoute(routeId);
+      console.log('🔄 MyRoutes - Cancelando ruta:', routeId);
+      const result = await cancelRoute(routeId);
+      
+      // Si no hubo excepción, mostrar éxito (incluso si result es null)
       Alert.alert(
         'Ruta cancelada',
         'Has cancelado la ruta exitosamente',
         [{ text: 'OK' }]
       );
     } catch (error) {
+      console.error('❌ MyRoutes - Error al cancelar ruta:', error);
+      
+      // Solo mostrar error si realmente es un error grave
       Alert.alert(
         'Error',
-        error.message || 'Error al cancelar la ruta'
+        'Hubo un problema al cancelar la ruta. Revisa la lista para ver si se canceló.',
+        [{ text: 'OK' }]
       );
     }
   };
@@ -43,6 +51,13 @@ const MyRoutes = () => {
         error.message || 'Error al completar la ruta'
       );
     }
+  };
+
+  const handleNavigateToConfirmationCode = (route) => {
+    navigation.navigate('ConfirmationCode', {
+      routeId: route.id,
+      routeInfo: route
+    });
   };
 
   if (loading) {
@@ -73,9 +88,12 @@ const MyRoutes = () => {
             route={item}
             onCancel={() => handleCancelRoute(item.id)}
             onComplete={() => handleCompleteRoute(item.id)}
+            onNavigateToCode={handleNavigateToConfirmationCode}
             showActions={true}
           />
         )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
       />
     </View>
   );
@@ -84,18 +102,21 @@ const MyRoutes = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.xl,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  listContent: {
+    paddingVertical: SPACING.sm,
   },
 });
 

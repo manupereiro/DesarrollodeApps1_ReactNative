@@ -1,9 +1,10 @@
 import React from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, View, Text } from 'react-native';
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
 import { useRoutes } from '../context/RoutesContext';
+import { COLORS, SPACING, FONT_SIZES } from '../config/constants';
 
 const AvailableRoutes = () => {
   const { availableRoutes, loading, error, selectRoute } = useRoutes();
@@ -32,6 +33,16 @@ const AvailableRoutes = () => {
     return <ErrorMessage message={error} />;
   }
 
+  if (!availableRoutes || availableRoutes.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hay rutas disponibles en este momento</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -43,6 +54,8 @@ const AvailableRoutes = () => {
             onSelect={() => handleSelectRoute(item.id)}
           />
         )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
       />
     </View>
   );
@@ -51,7 +64,21 @@ const AvailableRoutes = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  emptyText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  listContent: {
+    paddingVertical: SPACING.sm,
   },
 });
 

@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION } from '../config/constants';
 
 // Pantallas
 import AvailableRoutes from '../screens/AvailableRoutes';
@@ -12,9 +13,12 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MyRoutes from '../screens/MyRoutes';
+import ConfirmationCodeScreen from '../screens/ConfirmationCodeScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import PackageInfoScreen from '../screens/PackageInfoScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import QRScannerScreen from '../screens/QRScannerScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import RouteDetailsScreen from '../screens/RouteDetailsScreen';
@@ -36,39 +40,26 @@ const QRButton = ({ onPress }) => {
       activeOpacity={0.8}
     >
       <View style={styles.qrButtonInner}>
-        <MaterialIcons name="qr-code-scanner" size={30} color="#fff" />
+        <MaterialIcons name="qr-code-scanner" size={30} color={COLORS.textOnPrimary} />
       </View>
     </TouchableOpacity>
   );
 };
-
-// Pantalla temporal para el QR (para implementar después)
-const QRScreen = () => {
-  return (
-    <View style={styles.qrScreenContainer}>
-      <MaterialIcons name="qr-code-scanner" size={100} color="#055A85" />
-      <Text style={styles.qrScreenText}>Escáner QR</Text>
-      <Text style={styles.qrScreenSubtext}>Funcionalidad próximamente</Text>
-    </View>
-  );
-};
-
-
 
 // Tabs principales (autenticado)
 const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#055A85',
-        tabBarInactiveTintColor: '#757575',
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: COLORS.surface,
           borderTopWidth: 1,
-          borderTopColor: '#e0e0e0',
+          borderTopColor: COLORS.border,
           height: 70,
-          paddingBottom: 10,
-          paddingTop: 10,
+          paddingBottom: SPACING.sm,
+          paddingTop: SPACING.sm,
         },
         headerShown: false, // Hide all tab headers
       }}
@@ -85,7 +76,7 @@ const MainTabs = () => {
       />
       <Tab.Screen
         name="QRScanner"
-        component={QRScreen}
+        component={QRScannerScreen}
         options={{
           title: '',
           tabBarButton: (props) => (
@@ -152,6 +143,14 @@ const AppStack = () => {
         name="OrderDetails"
         component={OrderDetailsScreen}
       />
+      <Stack.Screen
+        name="PackageInfo"
+        component={PackageInfoScreen}
+      />
+      <Stack.Screen
+        name="ConfirmationCode"
+        component={ConfirmationCodeScreen}
+      />
     </Stack.Navigator>
   );
 };
@@ -191,7 +190,7 @@ const AppNavigator = () => {
   if (!hasBootstrapped) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
     );
@@ -216,12 +215,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
+    marginTop: SPACING.sm,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
   },
   qrButton: {
     top: -25,
@@ -233,37 +232,30 @@ const styles = StyleSheet.create({
   qrButtonInner: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    backgroundColor: '#055A85',
+    borderRadius: BORDER_RADIUS.xl * 2,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    ...ELEVATION.high,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: COLORS.surface,
   },
   qrScreenContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surface,
   },
   qrScreenText: {
-    fontSize: 24,
+    fontSize: FONT_SIZES.xxl,
     fontWeight: 'bold',
-    color: '#055A85',
-    marginTop: 20,
+    color: COLORS.primary,
+    marginTop: SPACING.lg,
   },
   qrScreenSubtext: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 10,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
   },
 });
 
