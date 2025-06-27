@@ -1,11 +1,13 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
 import { useRoutes } from '../context/RoutesContext';
 
-const AvailableRoutes = () => {
+const AvailableRoutes = ({ navigation }) => {
   const { availableRoutes, loading, error, selectRoute } = useRoutes();
 
   const handleSelectRoute = async (routeId) => {
@@ -34,16 +36,41 @@ const AvailableRoutes = () => {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={availableRoutes}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <RouteCard
-            route={item}
-            onSelect={() => handleSelectRoute(item.id)}
-          />
-        )}
-      />
+      <LinearGradient
+        colors={['#86CDE2', '#055A85']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Rutas Disponibles</Text>
+          <View style={styles.headerRight} />
+        </View>
+      </LinearGradient>
+
+      {availableRoutes.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hay rutas disponibles en este momento</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={availableRoutes}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <RouteCard
+              route={item}
+              onSelect={() => handleSelectRoute(item.id)}
+            />
+          )}
+        />
+      )}
     </View>
   );
 };
@@ -52,6 +79,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  headerGradient: {
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 40,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerRight: {
+    width: 40,
+  },
+  listContent: {
+    paddingTop: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 
