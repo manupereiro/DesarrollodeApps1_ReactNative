@@ -139,6 +139,42 @@ export const routesService = {
     }
   },
 
+  // Escanear QR y activar ruta
+  scanQR: async (qrCode) => {
+    const requestKey = `scanQR-${qrCode}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log(`🔄 routesService - Escaneando QR: ${qrCode}...`);
+      const response = await api.post('/routes/scan-qr', { qrCode });
+      console.log('✅ routesService - QR escaneado exitosamente:', response.data);
+      return response.data;
+    });
+  },
+
+  // Completar entrega con código de confirmación
+  completeWithCode: async (routeId, confirmationCode) => {
+    const requestKey = `completeWithCode-${routeId}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log(`🔄 routesService - Completando entrega con código para ruta ${routeId}...`);
+      const response = await api.post(`/routes/${routeId}/complete-with-code`, { confirmationCode });
+      console.log('✅ routesService - Entrega completada exitosamente:', response.data);
+      return response.data;
+    });
+  },
+
+  // Crear paquetes de prueba
+  createTestPackages: async () => {
+    const requestKey = 'createTestPackages';
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log('🔄 routesService - Creando paquetes de prueba...');
+      const response = await api.post('/routes/create-test-packages');
+      console.log('✅ routesService - Paquetes de prueba creados:', response.data);
+      return response.data;
+    });
+  },
+
   // Suscripción a cambios en tiempo real
   subscribeToRoutes: (onUpdate) => {
     // Aquí implementaremos la suscripción en tiempo real

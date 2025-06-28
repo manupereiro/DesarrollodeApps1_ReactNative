@@ -116,7 +116,7 @@ const RouteHistoryScreen = ({ navigation }) => {
       ) : (
         <FlatList
           data={completedRoutes}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || item.createdAt || Math.random()).toString()}
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.routeCard}

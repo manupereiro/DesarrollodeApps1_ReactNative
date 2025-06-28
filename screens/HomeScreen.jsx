@@ -2,16 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { routesService } from '../services/routesService';
 
 const HomeScreen = () => {
   const { logout, user } = useAuth(); 
@@ -30,7 +31,42 @@ const HomeScreen = () => {
         },
       ]
     );
-  };  return (
+  };
+
+  const handleCreateTestPackages = async () => {
+    try {
+      Alert.alert(
+        'Crear Paquetes de Prueba',
+        '¿Quieres crear 3 paquetes de prueba con códigos QR?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Crear',
+            onPress: async () => {
+              try {
+                const result = await routesService.createTestPackages();
+                Alert.alert(
+                  '✅ Paquetes Creados',
+                  'Se han creado 3 paquetes de prueba con códigos QR.\n\nAhora puedes asignar rutas y escanear los QRs.',
+                  [{ text: 'OK' }]
+                );
+              } catch (error) {
+                Alert.alert(
+                  '❌ Error',
+                  'No se pudieron crear los paquetes de prueba.',
+                  [{ text: 'OK' }]
+                );
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.log('❌ Error al crear paquetes de prueba:', error);
+    }
+  };
+
+  return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#86CDE2', '#055A85']}
@@ -123,6 +159,22 @@ const HomeScreen = () => {
               </View>
             </View>
           </View>
+
+          {/* Botón para crear paquetes de prueba */}
+          <TouchableOpacity
+            style={styles.testPackagesButton}
+            onPress={handleCreateTestPackages}
+          >
+            <LinearGradient
+              colors={['#4CAF50', '#45a049']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.testPackagesGradient}
+            >
+              <Ionicons name="qr-code" size={24} color="#fff" />
+              <Text style={styles.testPackagesText}>Crear Paquetes de Prueba</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -268,6 +320,29 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     color: '#445357',
     fontWeight: '500',
+  },
+  testPackagesButton: {
+    marginTop: 20,
+    borderRadius: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+  },
+  testPackagesGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  testPackagesText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 10,
   },
 });
 

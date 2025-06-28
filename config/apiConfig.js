@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { Platform } from 'react-native';
 
 export const API_CONFIG = {
@@ -10,6 +11,17 @@ export const API_CONFIG = {
     default: 'http://192.168.1.39:8080'
   }),
   TIMEOUT: 15000, // Aumentamos el timeout a 15 segundos
+=======
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+// IP de tu computadora en la red local
+const LOCAL_IP = '192.168.1.3';
+
+export const API_CONFIG = {
+  BASE_URL: `http://${LOCAL_IP}:8080`, // Siempre usar IP local
+  TIMEOUT: 30000,
+>>>>>>> Stashed changes
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -23,9 +35,15 @@ export const getApiConfig = () => {
   const baseURL = API_CONFIG.BASE_URL;
 
   console.log('🌐 API Config:', {
-    platform: Platform.OS,
+    LOCAL_IP,
     baseURL,
+<<<<<<< Updated upstream
     isDev: __DEV__
+=======
+    isDev: __DEV__,
+    platform: Platform.OS,
+    isDevice: Constants.isDevice
+>>>>>>> Stashed changes
   });
 
   return {

@@ -1,10 +1,15 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+<<<<<<< Updated upstream
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+=======
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+>>>>>>> Stashed changes
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
+import { COLORS, FONT_SIZES, SPACING } from '../config/constants';
 import { useRoutes } from '../context/RoutesContext';
 
 const AvailableRoutes = ({ navigation }) => {
@@ -58,6 +63,7 @@ const AvailableRoutes = ({ navigation }) => {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No hay rutas disponibles en este momento</Text>
         </View>
+<<<<<<< Updated upstream
       ) : (
         <FlatList
           data={availableRoutes}
@@ -71,6 +77,26 @@ const AvailableRoutes = ({ navigation }) => {
           )}
         />
       )}
+=======
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={availableRoutes}
+        keyExtractor={(item) => (item.id || item.createdAt || Math.random()).toString()}
+        renderItem={({ item }) => (
+          <RouteCard
+            route={item}
+            onSelect={() => handleSelectRoute(item.id)}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      />
+>>>>>>> Stashed changes
     </View>
   );
 };
