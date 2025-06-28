@@ -110,6 +110,10 @@ export const authApi = {
         'Accept': 'application/json'
       });
       
+      // Verificar configuración de API antes de hacer la petición
+      const config = getApiConfig();
+      console.log('🌐 authApi.login - Configuración API:', config);
+      
       const response = await api.post('/auth/login', credentials);
       
       // Log detallado de la respuesta
@@ -147,6 +151,7 @@ export const authApi = {
     } catch (error) {
       console.error('❌ authApi.login Error:', {
         message: error.message,
+        code: error.code,
         response: error.response ? {
           status: error.response.status,
           data: error.response.data,
@@ -156,9 +161,20 @@ export const authApi = {
           url: error.config.url,
           method: error.config.method,
           headers: error.config.headers,
-          data: error.config.data
+          data: error.config.data,
+          baseURL: error.config.baseURL
         } : 'No config'
       });
+      
+      // Manejar diferentes tipos de errores
+      if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
+        throw { error: 'No se puede conectar al servidor. Verifica que el backend esté corriendo.' };
+      } else if (error.code === 'ENOTFOUND') {
+        throw { error: 'No se puede encontrar el servidor. Verifica la configuración de IP.' };
+      } else if (error.code === 'ETIMEDOUT') {
+        throw { error: 'Timeout de conexión. El servidor no responde.' };
+      }
+      
       throw error.response?.data || { error: 'Error en el login' };
     }
   },

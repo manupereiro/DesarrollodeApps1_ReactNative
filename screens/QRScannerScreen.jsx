@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet, Button, Alert } from 'react-native';
-import { Camera } from 'expo-camera';
-import { BarcodeScanningResult, CameraView } from 'expo-camera';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { Camera, CameraView } from 'expo-camera';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { COLORS, FONT_SIZES, SPACING } from '../config/constants';
+import { useRoutes } from '../context/RoutesContext';
+import { packagesService } from '../services/packagesService';
 
-const QRScannerScreen = ({ navigation }) => {
+const QRScannerScreen = () => {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const navigation = useNavigation();
+  const { updateRouteStatus } = useRoutes();
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -17,55 +24,142 @@ const QRScannerScreen = ({ navigation }) => {
   }, []);
 
   const handleBarCodeScanned = async ({ type, data }) => {
-    setScanned(true);
+    if (scanned || isValidating) return;
     
-    // Mostrar QR code por consola
+    setScanned(true);
+    setIsValidating(true);
+    
     console.log('📱 QR Code escaneado:', data);
     
     try {
-      // Aquí haríamos la llamada al backend
-      // Por ahora simularemos con códigos de prueba
-      if (data === 'PKG001' || data === 'PKG002' || data === 'PKG003') {
+      // Validar QR con el servicio de paquetes
+      const validationResult = await packagesService.validateQR(data);
+      
+      if (validationResult.isValid) {
+        // QR válido - Mostrar información y proceder
         Alert.alert(
-          '✅ QR Code válido',
-          `Código: ${data}\nRevisa la consola para ver la información del paquete.`,
+          '✅ QR Válido',
+          `Paquete: ${validationResult.packageInfo.description}\nDestinatario: ${validationResult.packageInfo.recipientName}`,
           [
             {
-              text: 'Ver Ruta',
+              text: 'Cancelar',
+              style: 'cancel',
               onPress: () => {
-                // Navegar a la pantalla de información del paquete
-                navigation.navigate('PackageInfo', { qrCode: data });
+                setScanned(false);
+                setIsValidating(false);
               }
             },
             {
-              text: 'Escanear otro',
-              onPress: () => setScanned(false)
+              text: 'Activar Ruta',
+              onPress: async () => {
+                try {
+                  // Activar la ruta (cambiar estado a IN_PROGRESS)
+                  await packagesService.activateRoute(
+                    validationResult.packageInfo.routeId,
+                    validationResult.packageInfo.id
+                  );
+                  
+                  // Actualizar estado en el contexto
+                  await updateRouteStatus(
+                    validationResult.packageInfo.routeId,
+                    'IN_PROGRESS'
+                  );
+                  
+                  // Navegar a PackageInfo con la información del paquete
+                  navigation.navigate('PackageInfo', {
+                    packageData: validationResult.packageInfo,
+                    qrCode: data
+                  });
+                } catch (error) {
+                  Alert.alert(
+                    'Error',
+                    error.error || 'No se pudo activar la ruta'
+                  );
+                  setScanned(false);
+                  setIsValidating(false);
+                }
+              }
             }
           ]
         );
       } else {
+        // QR no válido
         Alert.alert(
-          '❌ QR Code no válido',
-          'Códigos de prueba disponibles: PKG001, PKG002, PKG003',
+          '❌ QR No Válido',
+          validationResult.message,
           [
             {
-              text: 'Intentar de nuevo',
-              onPress: () => setScanned(false)
+              text: 'Entendido',
+              onPress: () => {
+                setScanned(false);
+                setIsValidating(false);
+              }
+            },
+            {
+              text: 'Ver QRs Válidos',
+              onPress: () => {
+                Alert.alert(
+                  'QRs de Prueba',
+                  'Códigos válidos para testing:\n• PKG001 - Smartphone Samsung\n• PKG002 - Zapatillas Nike\n• PKG003 - Libros Harry Potter',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        setScanned(false);
+                        setIsValidating(false);
+                      }
+                    }
+                  ]
+                );
+              }
             }
           ]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'Error al procesar el código QR');
-      setScanned(false);
+      console.error('❌ Error validando QR:', error);
+      Alert.alert(
+        'Error de Conexión',
+        error.error || 'No se pudo validar el código QR. Verifica tu conexión a internet.',
+        [
+          {
+            text: 'Reintentar',
+            onPress: () => {
+              setScanned(false);
+              setIsValidating(false);
+            }
+          }
+        ]
+      );
     }
   };
 
+  const handleGoBack = () => {
+    navigation.goBack();
+  };
+
   if (hasPermission === null) {
-    return <Text>Solicitando permisos de cámara...</Text>;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Solicitando permisos de cámara...</Text>
+      </View>
+    );
   }
+
   if (hasPermission === false) {
-    return <Text>Sin acceso a la cámara</Text>;
+    return (
+      <View style={styles.errorContainer}>
+        <MaterialIcons name="camera-alt" size={64} color={COLORS.error} />
+        <Text style={styles.errorText}>Sin acceso a la cámara</Text>
+        <Text style={styles.errorSubtext}>
+          Por favor, permite el acceso a la cámara en la configuración de la aplicación
+        </Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -78,18 +172,59 @@ const QRScannerScreen = ({ navigation }) => {
         }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleGoBack}
+          >
+            <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Escanear QR</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Overlay */}
         <View style={styles.overlay}>
           <View style={styles.unfocusedContainer}>
             <View style={styles.focusedContainer}>
-              <Text style={styles.text}>Apunta la cámara al código QR del paquete</Text>
+              <View style={styles.scanArea}>
+                <View style={[styles.corner, styles.topLeft]} />
+                <View style={[styles.corner, styles.topRight]} />
+                <View style={[styles.corner, styles.bottomLeft]} />
+                <View style={[styles.corner, styles.bottomRight]} />
+              </View>
             </View>
           </View>
           
-          {scanned && (
-            <Button
-              title={'Presiona para escanear nuevamente'}
+          {/* Instrucciones */}
+          <View style={styles.instructionsContainer}>
+            <MaterialIcons name="qr-code-scanner" size={32} color={COLORS.textOnPrimary} />
+            <Text style={styles.instructionText}>
+              Apunta la cámara al código QR del paquete
+            </Text>
+            <Text style={styles.instructionSubtext}>
+              Solo códigos QR de paquetes en tus rutas asignadas
+            </Text>
+          </View>
+
+          {/* Estado de validación */}
+          {isValidating && (
+            <View style={styles.validatingContainer}>
+              <ActivityIndicator size="large" color={COLORS.textOnPrimary} />
+              <Text style={styles.validatingText}>Validando QR...</Text>
+            </View>
+          )}
+
+          {/* Manual scan again button */}
+          {scanned && !isValidating && (
+            <TouchableOpacity
+              style={styles.scanAgainButton}
               onPress={() => setScanned(false)}
-            />
+            >
+              <MaterialIcons name="refresh" size={20} color={COLORS.textOnPrimary} />
+              <Text style={styles.scanAgainText}>Escanear otro QR</Text>
+            </TouchableOpacity>
           )}
         </View>
       </CameraView>
@@ -100,11 +235,32 @@ const QRScannerScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'center',
+    backgroundColor: COLORS.black,
   },
   camera: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 50,
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  backButton: {
+    padding: SPACING.sm,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.textOnPrimary,
+  },
+  headerSpacer: {
+    width: 40,
   },
   overlay: {
     position: 'absolute',
@@ -120,22 +276,135 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
   },
   focusedContainer: {
-    width: 250,
-    height: 250,
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#00ff00',
-    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  text: {
-    color: '#fff',
-    fontSize: 16,
+  scanArea: {
+    width: 250,
+    height: 250,
+    backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderColor: COLORS.success,
+    borderWidth: 3,
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+  },
+  instructionsContainer: {
+    position: 'absolute',
+    bottom: 150,
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  instructionText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
     textAlign: 'center',
-    margin: 20,
+    marginTop: SPACING.sm,
+    fontWeight: '600',
+  },
+  instructionSubtext: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.sm,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    opacity: 0.8,
+  },
+  validatingContainer: {
+    position: 'absolute',
+    bottom: 100,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: 10,
+  },
+  validatingText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    marginTop: SPACING.sm,
+    fontWeight: '600',
+  },
+  scanAgainButton: {
+    position: 'absolute',
+    bottom: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: 25,
+  },
+  scanAgainText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    marginLeft: SPACING.sm,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.xl,
+  },
+  errorText: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.error,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
+    textAlign: 'center',
+  },
+  backButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
   },
 });
 

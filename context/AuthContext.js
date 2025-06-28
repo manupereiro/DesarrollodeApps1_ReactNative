@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
-import authApi from '../services/authApi';
+import { authApi } from '../services/authApi';
 import TokenStorage from '../services/tokenStorage';
 
 // Estados iniciales

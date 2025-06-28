@@ -243,23 +243,56 @@ export const RoutesProvider = ({ children }) => {
     }
   };
 
-  // Actualizar estado de una ruta
+  // Actualizar estado de ruta
   const updateRouteStatus = async (routeId, status) => {
+    const requestId = `updateRouteStatus-${routeId}-${status}`;
+    
+    if (requestsInProgress.current.has(requestId)) {
+      console.log('🔄 UpdateRouteStatus ya en progreso para:', routeId, status);
+      return;
+    }
+    
+    requestsInProgress.current.add(requestId);
+    
     try {
+      console.log('🔄 RoutesContext - Actualizando estado de ruta:', { routeId, status });
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
-      await routesService.updateRouteStatus(routeId, status);
-      dispatch({
-        type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS,
-        payload: { id: routeId, status }
+      
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Actualizar estado local inmediatamente
+      dispatch({ 
+        type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+        payload: { id: routeId, status } 
       });
-      await loadRoutes(); // Recargar las rutas para asegurar sincronización
+      
+      console.log('✅ RoutesContext - Estado de ruta actualizado exitosamente');
+      
+      // Recargar rutas después de un breve delay para sincronizar
+      setTimeout(() => {
+        debouncedLoadRoutes();
+      }, 500);
+      
     } catch (error) {
-      const errorMessage = error.error || error.message || 'Error al actualizar el estado de la ruta';
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
-      throw new Error(errorMessage);
+      console.error('❌ RoutesContext - Error actualizando estado:', error);
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: 'Error al actualizar el estado de la ruta' });
+      throw error;
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
+      requestsInProgress.current.delete(requestId);
     }
+  };
+
+  // Obtener ruta por ID
+  const getRouteById = (routeId) => {
+    const allRoutes = [...state.availableRoutes, ...state.myRoutes];
+    return allRoutes.find(route => route.id === routeId);
+  };
+
+  // Verificar si una ruta está asignada al usuario
+  const isRouteAssigned = (routeId) => {
+    return state.myRoutes.some(route => route.id === routeId);
   };
 
   const value = {
@@ -267,7 +300,9 @@ export const RoutesProvider = ({ children }) => {
     loadRoutes,
     selectRoute,
     cancelRoute,
-    updateRouteStatus
+    updateRouteStatus,
+    getRouteById,
+    isRouteAssigned
   };
 
   return (

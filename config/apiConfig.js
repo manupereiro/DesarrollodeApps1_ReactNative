@@ -1,24 +1,62 @@
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-
-// Detectar si es emulador o dispositivo físico
-const isAndroidEmulator = Platform.OS === 'android' && !Constants.isDevice;
-const isIOSSimulator = Platform.OS === 'ios' && !Constants.isDevice;
+import { Platform } from 'react-native';
 
 // IP de tu computadora en la red local (detectada automáticamente)
-const LOCAL_IP = '192.168.0.8'; // 🔥 IP ACTUAL DETECTADA
+const LOCAL_IP = '192.168.0.243'; // 🔥 IP ACTUAL DETECTADA
+
+// Función mejorada para detectar tipo de dispositivo
+const getDeviceType = () => {
+  console.log('🔍 Detectando tipo de dispositivo:', {
+    platform: Platform.OS,
+    isDevice: Constants.isDevice,
+    experienceUrl: Constants.experienceUrl,
+    appOwnership: Constants.appOwnership,
+    executionEnvironment: Constants.executionEnvironment
+  });
+
+  // Si está corriendo en Expo Go (appOwnership === 'expo'), es muy probable que sea dispositivo físico
+  if (Constants.appOwnership === 'expo') {
+    console.log('📱 Detectado: Expo Go - Asumiendo dispositivo físico');
+    return 'PHYSICAL_DEVICE';
+  }
+
+  // Método tradicional mejorado
+  if (Constants.isDevice === true) {
+    return 'PHYSICAL_DEVICE';
+  } else if (Constants.isDevice === false) {
+    return Platform.OS === 'android' ? 'ANDROID_EMULATOR' : 'IOS_SIMULATOR';
+  }
+
+  // Fallback: si isDevice es undefined, verificar otros indicadores
+  if (Constants.experienceUrl && Constants.experienceUrl.includes('192.168')) {
+    console.log('🌐 URL contiene IP local - Asumiendo dispositivo físico');
+    return 'PHYSICAL_DEVICE';
+  }
+
+  // Fallback final basado en plataforma
+  console.log('⚠️ No se pudo determinar tipo de dispositivo, usando fallback');
+  return Platform.OS === 'android' ? 'ANDROID_EMULATOR' : 'IOS_SIMULATOR';
+};
 
 export const API_CONFIG = {
   BASE_URL: (() => {
-    if (isAndroidEmulator) {
-      return 'http://10.0.2.2:8080'; // Emulador Android
-    } else if (isIOSSimulator) {
-      return `http://${LOCAL_IP}:8080`; // Simulador iOS
+    const deviceType = getDeviceType();
+    
+    console.log('🎯 Tipo de dispositivo determinado:', deviceType);
+    
+    // SIEMPRE usar IP local para Expo Go y dispositivos físicos
+    if (deviceType === 'PHYSICAL_DEVICE') {
+      console.log('📱 Configurando para dispositivo físico');
+      return `http://${LOCAL_IP}:8080`;
+    } else if (deviceType === 'ANDROID_EMULATOR') {
+      console.log('🤖 Configurando para emulador Android');
+      return 'http://10.0.2.2:8080';
     } else {
-      return `http://${LOCAL_IP}:8080`; // Dispositivo físico
+      console.log('🍎 Configurando para simulador iOS');
+      return `http://${LOCAL_IP}:8080`;
     }
   })(),
-  TIMEOUT: 30000, // Aumentamos el timeout a 30 segundos para dispositivos físicos
+  TIMEOUT: 30000,
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -28,13 +66,14 @@ export const API_CONFIG = {
 // Función para obtener la configuración de la API
 export const getApiConfig = () => {
   const baseURL = API_CONFIG.BASE_URL;
+  const deviceType = getDeviceType();
   
-  console.log('🌐 API Config:', {
+  console.log('🌐 API Config Final:', {
     platform: Platform.OS,
     baseURL,
+    deviceType,
     isDevice: Constants.isDevice,
-    isAndroidEmulator,
-    isIOSSimulator,
+    appOwnership: Constants.appOwnership,
     isDev: __DEV__
   });
 

@@ -1,170 +1,210 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  SafeAreaView
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
+import { packagesService } from '../services/packagesService';
 
-const ConfirmationCodeScreen = ({ route, navigation }) => {
-  const { routeId, routeInfo } = route.params;
-  const [confirmationCode, setConfirmationCode] = useState('');
+const ConfirmationCodeScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { packageData, onDeliveryComplete } = route.params || {};
+  
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  // Simular el código de confirmación (normalmente sería proporcionado por el comprador)
-  const simulateCustomerCode = () => {
-    const codes = ['123456', '789012', '345678'];
-    const randomCode = codes[Math.floor(Math.random() * codes.length)];
-    
-    // Mostrar por consola como simulación del comprador
-    console.log('=== CÓDIGO DE CONFIRMACIÓN DEL COMPRADOR ===');
-    console.log('El comprador te proporciona el código:', randomCode);
-    console.log('============================================');
-    
-    Alert.alert(
-      '📱 Código del Comprador',
-      `El comprador te ha proporcionado el código: ${randomCode}\n\n(Revisa la consola para ver la simulación)`,
-      [
-        {
-          text: 'Usar este código',
-          onPress: () => setConfirmationCode(randomCode)
-        },
-        {
-          text: 'Ingresar manualmente',
-          style: 'cancel'
-        }
-      ]
-    );
-  };
-
-  const handleCompleteDelivery = async () => {
-    if (!confirmationCode.trim()) {
-      Alert.alert('Error', 'Por favor ingresa el código de confirmación');
+  const handleConfirmDelivery = async () => {
+    // Validar código
+    if (!code || code.length !== 6) {
+      setErrors({ code: 'El código debe tener 6 dígitos' });
       return;
     }
 
-    setLoading(true);
-    try {
-      // Aquí haríamos la llamada al backend
-      // await routesService.completeWithCode(routeId, confirmationCode);
-      
-      // Simular la validación del código
-      const validCodes = ['123456', '789012', '345678'];
-      if (validCodes.includes(confirmationCode)) {
-        console.log('=== CÓDIGO DE CONFIRMACIÓN ===');
-        console.log('El comprador proporciona el código:', confirmationCode);
-        console.log('✅ Código verificado correctamente');
-        console.log('🎉 Entrega completada exitosamente');
-        console.log('==============================');
+    if (!/^\d{6}$/.test(code)) {
+      setErrors({ code: 'El código solo puede contener números' });
+      return;
+    }
 
+    setErrors({});
+    setLoading(true);
+
+    try {
+      const result = await packagesService.confirmDelivery(packageData.id, code);
+      
+      if (result.success) {
         Alert.alert(
-          '🎉 Entrega Completada',
-          'La entrega se ha completado exitosamente.',
+          '✅ Entrega Confirmada',
+          result.message,
           [
             {
-              text: 'Ver mis rutas',
-              onPress: () => navigation.navigate('MyRoutes')
+              text: 'Continuar',
+              onPress: () => {
+                if (onDeliveryComplete) {
+                  onDeliveryComplete(result.packageInfo);
+                }
+                navigation.navigate('MyRoutes');
+              }
             }
           ]
         );
       } else {
-        Alert.alert(
-          '❌ Código Incorrecto',
-          'El código de confirmación no es válido. Por favor verifica con el comprador.',
-          [
-            {
-              text: 'Intentar de nuevo',
-              style: 'cancel'
-            },
-            {
-              text: 'Obtener nuevo código',
-              onPress: simulateCustomerCode
-            }
-          ]
-        );
+        Alert.alert('❌ Código Incorrecto', result.message);
       }
     } catch (error) {
-      Alert.alert('Error', 'Error al completar la entrega');
+      Alert.alert('Error', error.error || 'No se pudo confirmar la entrega');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCodeChange = (text) => {
+    // Solo permitir números y máximo 6 dígitos
+    const numericText = text.replace(/[^0-9]/g, '').substring(0, 6);
+    setCode(numericText);
+    
+    // Limpiar errores cuando el usuario escribe
+    if (errors.code) {
+      setErrors({});
+    }
+  };
+
+  const getHintForPackage = () => {
+    // Mostrar el código correcto como pista (solo para desarrollo)
+    return `Código correcto: ${packageData?.confirmationCode || '123456'}`;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Código de Confirmación</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <MaterialIcons name="verified" size={80} color="#4CAF50" />
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Confirmar Entrega</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        <Text style={styles.title}>Completar Entrega</Text>
-        <Text style={styles.subtitle}>
-          Solicita al comprador el código de confirmación para completar la entrega
-        </Text>
-
-        {routeInfo && (
-          <View style={styles.routeInfo}>
-            <Text style={styles.routeLabel}>Destino:</Text>
-            <Text style={styles.routeText}>{routeInfo.destination}</Text>
+        <View style={styles.content}>
+          {/* Package Info Summary */}
+          <View style={styles.packageSummary}>
+            <MaterialIcons name="local-shipping" size={32} color={COLORS.primary} />
+            <View style={styles.packageInfo}>
+              <Text style={styles.packageCode}>{packageData?.qrCode}</Text>
+              <Text style={styles.packageDesc}>{packageData?.description}</Text>
+              <Text style={styles.recipientName}>{packageData?.recipientName}</Text>
+            </View>
           </View>
-        )}
 
-        <View style={styles.codeSection}>
-          <Text style={styles.codeLabel}>Código de Confirmación</Text>
-          <TextInput
-            style={styles.codeInput}
-            value={confirmationCode}
-            onChangeText={setConfirmationCode}
-            placeholder="Ingresa el código de 6 dígitos"
-            placeholderTextColor="#999"
-            keyboardType="number-pad"
-            maxLength={6}
-            autoFocus
-          />
+          {/* Instructions */}
+          <View style={styles.instructionsContainer}>
+            <MaterialIcons name="info-outline" size={24} color={COLORS.info} />
+            <Text style={styles.instructions}>
+              Solicita al cliente el código de confirmación de 6 dígitos para completar la entrega
+            </Text>
+          </View>
+
+          {/* Expected Code Display (Development only) */}
+          <View style={styles.hintContainer}>
+            <MaterialIcons name="lightbulb-outline" size={20} color={COLORS.warning} />
+            <Text style={styles.hint}>{getHintForPackage()}</Text>
+          </View>
+
+          {/* Code Input */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Código de Confirmación</Text>
+            <TextInput
+              style={[
+                styles.codeInput,
+                errors.code && styles.inputError
+              ]}
+              value={code}
+              onChangeText={handleCodeChange}
+              placeholder="000000"
+              keyboardType="numeric"
+              maxLength={6}
+              textAlign="center"
+              fontSize={24}
+              letterSpacing={8}
+              autoFocus
+            />
+            {errors.code && (
+              <Text style={styles.errorText}>{errors.code}</Text>
+            )}
+            <Text style={styles.inputHint}>
+              {code.length}/6 dígitos
+            </Text>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.confirmButton]}
+              onPress={handleConfirmDelivery}
+              disabled={loading || code.length !== 6}
+            >
+              {loading ? (
+                <ActivityIndicator color={COLORS.textOnPrimary} />
+              ) : (
+                <>
+                  <MaterialIcons name="check-circle" size={20} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Confirmar Entrega</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.cancelButton]}
+              onPress={() => navigation.goBack()}
+              disabled={loading}
+            >
+              <MaterialIcons name="cancel" size={20} color={COLORS.textPrimary} />
+              <Text style={[styles.buttonText, { color: COLORS.textPrimary }]}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Contact Customer */}
+          <TouchableOpacity 
+            style={styles.contactButton}
+            onPress={() => {
+              Alert.alert(
+                'Contactar Cliente',
+                `¿Deseas llamar a ${packageData?.recipientName}?`,
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { 
+                    text: 'Llamar', 
+                    onPress: () => {
+                      // Aquí podrías implementar la funcionalidad de llamada
+                      Alert.alert('Funcionalidad no implementada', 'En una versión completa, esto abriría la aplicación de teléfono');
+                    }
+                  }
+                ]
+              );
+            }}
+          >
+            <MaterialIcons name="phone" size={20} color={COLORS.primary} />
+            <Text style={styles.contactText}>Contactar Cliente</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.simulateButton}
-          onPress={simulateCustomerCode}
-        >
-          <MaterialIcons name="phone" size={20} color="#2196F3" />
-          <Text style={styles.simulateButtonText}>
-            Simular código del comprador
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.completeButton, loading && styles.disabledButton]}
-          onPress={handleCompleteDelivery}
-          disabled={loading}
-        >
-          <MaterialIcons name="check-circle" size={24} color="#fff" />
-          <Text style={styles.completeButtonText}>
-            {loading ? 'Verificando...' : 'Completar Entrega'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.helpSection}>
-          <Text style={styles.helpText}>
-            💡 El comprador debe proporcionarte un código de 6 dígitos para confirmar la entrega
-          </Text>
-        </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -172,149 +212,167 @@ const ConfirmationCodeScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    padding: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.primary,
+    ...ELEVATION.low,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.lg,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.textOnPrimary,
   },
-  headerRight: {
-    width: 40,
+  headerSpacer: {
+    width: 24,
   },
   content: {
     flex: 1,
-    padding: 20,
-    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
   },
-  iconContainer: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  routeInfo: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    width: '100%',
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  routeLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  routeText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  codeSection: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  codeLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  codeInput: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    fontSize: 18,
-    textAlign: 'center',
-    letterSpacing: 4,
-    borderWidth: 2,
-    borderColor: '#4CAF50',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  simulateButton: {
+  packageSummary: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#2196F3',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.lg,
+    ...ELEVATION.low,
   },
-  simulateButtonText: {
-    color: '#2196F3',
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 8,
+  packageInfo: {
+    flex: 1,
+    marginLeft: SPACING.md,
   },
-  completeButton: {
+  packageCode: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  packageDesc: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+    marginTop: SPACING.xs,
+  },
+  recipientName: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  instructionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.lightGray,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  instructions: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+    marginLeft: SPACING.sm,
+    lineHeight: 20,
+  },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.warning}15`,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.lg,
+  },
+  hint: {
+    flex: 1,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.warning,
+    marginLeft: SPACING.sm,
+    fontWeight: '600',
+  },
+  inputContainer: {
+    marginBottom: SPACING.xl,
+  },
+  inputLabel: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+  },
+  codeInput: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    fontSize: FONT_SIZES.xl,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    ...ELEVATION.low,
+  },
+  inputError: {
+    borderColor: COLORS.error,
+  },
+  errorText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.error,
+    marginTop: SPACING.xs,
+  },
+  inputHint: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
+  buttonsContainer: {
+    marginBottom: SPACING.lg,
+  },
+  button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    width: '100%',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.md,
+    ...ELEVATION.low,
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
+  confirmButton: {
+    backgroundColor: COLORS.success,
   },
-  completeButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
+  cancelButton: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  helpSection: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 8,
-    width: '100%',
+  buttonText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.textOnPrimary,
+    marginLeft: SPACING.sm,
   },
-  helpText: {
-    fontSize: 14,
-    color: '#2E7D32',
-    textAlign: 'center',
-    lineHeight: 20,
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  contactText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primary,
+    marginLeft: SPACING.sm,
+    fontWeight: '600',
   },
 });
 

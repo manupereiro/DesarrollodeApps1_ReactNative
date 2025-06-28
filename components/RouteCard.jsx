@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION, BUTTON_STYLES } from '../config/constants';
+import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
 
 const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, showActions = true }) => {
   // Debug: Log la ruta que recibe este componente
@@ -117,7 +117,24 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
               <MaterialIcons name="add-road" size={16} color={COLORS.textOnPrimary} />
               <Text style={styles.buttonText}>Elegir Ruta</Text>
             </TouchableOpacity>
-          ) : (route.status === 'ASSIGNED' || route.status === 'IN_PROGRESS') ? (
+          ) : (route.status === 'ASSIGNED') ? (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[styles.button, styles.qrButton]}
+                onPress={() => onNavigateToCode ? onNavigateToCode(route) : null}
+              >
+                <MaterialIcons name="qr-code-scanner" size={16} color={COLORS.textOnPrimary} />
+                <Text style={styles.buttonText}>Escanear QR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => onCancel(route.id)}
+              >
+                <MaterialIcons name="cancel" size={16} color={COLORS.textOnPrimary} />
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (route.status === 'IN_PROGRESS') ? (
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={[styles.button, styles.completeButton]}
@@ -271,6 +288,11 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
+  },
+  qrButton: {
+    backgroundColor: COLORS.primary,
+    flex: 1,
+    marginRight: SPACING.xs,
   },
 });
 
