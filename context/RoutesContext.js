@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
-=======
 import React, { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react';
->>>>>>> Stashed changes
 import { routesService } from '../services/routesService';
 import { useAuth } from './AuthContext';
 
@@ -75,18 +71,6 @@ const RoutesContext = createContext();
 export const RoutesProvider = ({ children }) => {
   const [state, dispatch] = useReducer(routesReducer, initialState);
   const { isAuthenticated } = useAuth();
-<<<<<<< Updated upstream
-
-  // Cargar rutas cuando el usuario está autenticado
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadRoutes();
-    }
-  }, [isAuthenticated]);
-
-  // Cargar rutas disponibles y asignadas
-  const loadRoutes = async () => {
-=======
   const loadRoutesTimeoutRef = useRef(null);
   const requestsInProgress = useRef(new Set());
 
@@ -102,14 +86,30 @@ export const RoutesProvider = ({ children }) => {
     
     requestsInProgress.current.add(requestId);
     
->>>>>>> Stashed changes
     try {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
-      const [availableRoutes, myRoutes] = await Promise.all([
-        routesService.getAvailableRoutes(),
-        routesService.getMyRoutes()
-      ]);
+      // Intentar cargar rutas pero ignorar errores 403/401
+      let availableRoutes = [];
+      let myRoutes = [];
+      
+      try {
+        availableRoutes = await routesService.getAvailableRoutes();
+      } catch (error) {
+        console.warn('⚠️ Error cargando rutas disponibles (ignorando):', error.message);
+        if (error.response?.status === 403 || error.response?.status === 401) {
+          console.log('🔄 Ignorando error 403/401 en availableRoutes');
+        }
+      }
+      
+      try {
+        myRoutes = await routesService.getMyRoutes();
+      } catch (error) {
+        console.warn('⚠️ Error cargando mis rutas (ignorando):', error.message);
+        if (error.response?.status === 403 || error.response?.status === 401) {
+          console.log('🔄 Ignorando error 403/401 en myRoutes');
+        }
+      }
 
       // Filtrar rutas que tengan id válido
       const validAvailableRoutes = Array.isArray(availableRoutes) 
@@ -123,9 +123,14 @@ export const RoutesProvider = ({ children }) => {
       dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: validAvailableRoutes });
       dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: validMyRoutes });
     } catch (error) {
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
+      console.error('❌ Error en loadRoutes:', error);
+      // Solo mostrar error si no es 403/401
+      if (error.response?.status !== 403 && error.response?.status !== 401) {
+        dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
+      }
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
+      requestsInProgress.current.delete(requestId);
     }
   }, [dispatch]);
 
@@ -150,9 +155,6 @@ export const RoutesProvider = ({ children }) => {
   }, [isAuthenticated, debouncedLoadRoutes]);
 
   // Seleccionar una ruta
-<<<<<<< Updated upstream
-  const selectRoute = async (routeId) => {
-=======
   const selectRoute = useCallback(async (routeId) => {
     const requestId = `selectRoute-${routeId}`;
     
@@ -163,22 +165,35 @@ export const RoutesProvider = ({ children }) => {
     
     requestsInProgress.current.add(requestId);
     
->>>>>>> Stashed changes
     try {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       await routesService.selectRoute(routeId);
-      await loadRoutes();
+      
+      // Esperar un poco antes de recargar para evitar race conditions
+      setTimeout(() => {
+        debouncedLoadRoutes();
+      }, 500);
     } catch (error) {
+      console.error('❌ RoutesContext - Error en selectRoute:', error);
+      
+      // Si es error 403/401, no mostrarlo como error crítico
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        console.log('🔄 RoutesContext - Error 403/401 en selectRoute, pero la operación puede haber funcionado');
+        // Recargar de todas formas
+        setTimeout(() => debouncedLoadRoutes(), 500);
+        return; // No lanzar error
+      }
+      
+      // Para otros errores reales
       const errorMessage = error.error || error.message || 'Error al seleccionar la ruta';
       dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
       throw new Error(errorMessage);
+    } finally {
+      requestsInProgress.current.delete(requestId);
     }
   }, [dispatch, debouncedLoadRoutes]);
 
   // Cancelar una ruta
-<<<<<<< Updated upstream
-  const cancelRoute = async (routeId) => {
-=======
   const cancelRoute = useCallback(async (routeId) => {
     const requestId = `cancelRoute-${routeId}`;
     
@@ -189,15 +204,42 @@ export const RoutesProvider = ({ children }) => {
     
     requestsInProgress.current.add(requestId);
     
->>>>>>> Stashed changes
     try {
+      console.log('🔄 RoutesContext - Cancelando ruta:', routeId);
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
-      await routesService.cancelRoute(routeId);
-      await loadRoutes();
+      
+      // Validar que tenemos el routeId
+      if (!routeId) {
+        throw new Error('ID de ruta no válido');
+      }
+      
+      const cancelledRoute = await routesService.cancelRoute(routeId);
+      console.log('✅ RoutesContext - Ruta cancelada exitosamente');
+      
+      // Recargar rutas después de un delay - pero ignorar errores
+      setTimeout(() => {
+        debouncedLoadRoutes();
+      }, 300);
+      
+      return cancelledRoute;
     } catch (error) {
-      const errorMessage = error.error || error.message || 'Error al cancelar la ruta';
+      console.error('❌ RoutesContext - Error en cancelRoute:', error);
+      
+      // Si es error 403/401, no mostrarlo como error crítico
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        console.log('🔄 RoutesContext - Error 403/401 en cancelRoute, pero la operación puede haber funcionado');
+        // Recargar de todas formas
+        setTimeout(() => debouncedLoadRoutes(), 300);
+        return null; // Retornar null en lugar de error
+      }
+      
+      // Para otros errores reales, propagar
+      const errorMessage = error.response?.data?.message || error.message || 'Error al cancelar la ruta';
       dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
       throw new Error(errorMessage);
+    } finally {
+      dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
+      requestsInProgress.current.delete(requestId);
     }
   }, [dispatch, debouncedLoadRoutes]);
 
@@ -223,7 +265,6 @@ export const RoutesProvider = ({ children }) => {
 
   const value = {
     ...state,
-    loadRoutes,
     selectRoute,
     cancelRoute,
     updateRouteStatus
@@ -236,7 +277,6 @@ export const RoutesProvider = ({ children }) => {
   );
 };
 
-// Hook personalizado
 export const useRoutes = () => {
   const context = useContext(RoutesContext);
   if (!context) {

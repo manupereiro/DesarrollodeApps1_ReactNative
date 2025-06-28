@@ -5,7 +5,6 @@ import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
-import { COLORS, FONT_SIZES, SPACING } from '../config/constants';
 import { useRoutes } from '../context/RoutesContext';
 
 const MyRoutes = ({ navigation }) => {
@@ -80,11 +79,10 @@ const MyRoutes = ({ navigation }) => {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No tienes rutas activas en este momento</Text>
         </View>
-<<<<<<< Updated upstream
       ) : (
         <FlatList
           data={activeRoutes}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || item.createdAt || Math.random()).toString()}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <RouteCard
@@ -96,29 +94,6 @@ const MyRoutes = ({ navigation }) => {
           )}
         />
       )}
-=======
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={activeRoutes}
-        keyExtractor={(item) => (item.id || item.createdAt || Math.random()).toString()}
-        renderItem={({ item }) => (
-          <RouteCard
-            route={item}
-            onCancel={() => handleCancelRoute(item.id)}
-            onComplete={() => handleCompleteRoute(item.id)}
-            onNavigateToCode={handleNavigateToConfirmationCode}
-            showActions={true}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
->>>>>>> Stashed changes
     </View>
   );
 };
