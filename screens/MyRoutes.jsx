@@ -82,7 +82,7 @@ const MyRoutes = ({ navigation }) => {
     <View style={styles.container}>
       <FlatList
         data={activeRoutes}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
         renderItem={({ item }) => (
           <RouteCard
             route={item}

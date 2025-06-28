@@ -9,6 +9,12 @@ import { COLORS, SPACING, FONT_SIZES } from '../config/constants';
 const AvailableRoutes = () => {
   const { availableRoutes, loading, error, selectRoute } = useRoutes();
 
+  // Debug: Log las rutas que llegan al componente
+  console.log('🔍 AvailableRoutes - Rutas disponibles:', availableRoutes?.length || 0);
+  if (availableRoutes && availableRoutes.length > 0) {
+    console.log('🔍 AvailableRoutes - Primera ruta completa:', JSON.stringify(availableRoutes[0], null, 2));
+  }
+
   const handleSelectRoute = async (routeId) => {
     try {
       await selectRoute(routeId);
@@ -47,7 +53,7 @@ const AvailableRoutes = () => {
     <View style={styles.container}>
       <FlatList
         data={availableRoutes}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
         renderItem={({ item }) => (
           <RouteCard
             route={item}

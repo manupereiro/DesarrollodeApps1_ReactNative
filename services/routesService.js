@@ -169,7 +169,29 @@ export const routesService = {
     return makeRequest(requestKey, async (api) => {
       console.log('🔄 routesService - Obteniendo rutas disponibles...');
       const response = await api.get('/routes/available');
-      console.log('✅ routesService - Rutas disponibles obtenidas:', response.data);
+      console.log('✅ routesService - Rutas disponibles obtenidas:', response.data?.length || 0, 'rutas');
+      
+      // Debug: mostrar la respuesta completa
+      console.log('🔍 routesService - Respuesta completa del servidor:', JSON.stringify(response.data, null, 2));
+      
+      // Debug: mostrar detalles de las primeras rutas
+      if (response.data && response.data.length > 0) {
+        for (let i = 0; i < Math.min(3, response.data.length); i++) {
+          const route = response.data[i];
+          console.log(`🔍 routesService - Ruta ${i+1}:`, {
+            id: route?.id,
+            origin: route?.origin,
+            destination: route?.destination,
+            distance: route?.distance,
+            status: route?.status,
+            estimatedDuration: route?.estimatedDuration,
+            packageInfo: route?.packageInfo
+          });
+        }
+      } else {
+        console.warn('⚠️ routesService - No se recibieron rutas o el array está vacío');
+      }
+      
       return response.data;
     });
   },

@@ -71,7 +71,9 @@ const SettingsScreen = ({ navigation }) => {
         color="#999" 
       />
     </TouchableOpacity>
-  );  return (
+  );
+
+  return (
     <View style={styles.container}>
       {/* Custom Header */}
       <LinearGradient

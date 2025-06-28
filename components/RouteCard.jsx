@@ -4,6 +4,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION, BUTTON_STYLES } from '../config/constants';
 
 const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, showActions = true }) => {
+  // Debug: Log la ruta que recibe este componente
+  console.log('🔍 RouteCard - Ruta recibida:', JSON.stringify(route, null, 2));
   const getStatusColor = (status) => {
     switch (status) {
       case 'AVAILABLE':
@@ -70,7 +72,7 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </View>
             <View style={styles.locationTextContainer}>
               <Text style={styles.locationLabel}>Origen</Text>
-              <Text style={styles.locationText} numberOfLines={1}>{route.origin}</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{route?.origin || 'Sin origen'}</Text>
             </View>
           </View>
           
@@ -84,7 +86,7 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </View>
             <View style={styles.locationTextContainer}>
               <Text style={styles.locationLabel}>Destino</Text>
-              <Text style={styles.locationText} numberOfLines={1}>{route.destination}</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{route?.destination || 'Sin destino'}</Text>
             </View>
           </View>
         </View>
@@ -94,7 +96,7 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
         <View style={styles.details}>
           <View style={styles.detailItem}>
             <MaterialIcons name="straighten" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.detailText}>{route.distance} km</Text>
+            <Text style={styles.detailText}>{route?.distance || 'N/A'} km</Text>
           </View>
           <View style={styles.detailItem}>
             <MaterialIcons name="access-time" size={16} color={COLORS.textSecondary} />

@@ -115,6 +115,15 @@ export const RoutesProvider = ({ children }) => {
       
       try {
         availableRoutes = await routesService.getAvailableRoutes();
+        console.log('🔍 RoutesContext - Rutas disponibles recibidas:', availableRoutes?.length || 0);
+        if (availableRoutes && availableRoutes.length > 0) {
+          console.log('🔍 RoutesContext - Primera ruta:', {
+            id: availableRoutes[0]?.id,
+            origin: availableRoutes[0]?.origin,
+            destination: availableRoutes[0]?.destination,
+            distance: availableRoutes[0]?.distance
+          });
+        }
       } catch (error) {
         console.warn('⚠️ Error cargando rutas disponibles (ignorando):', error.message);
         if (error.response?.status === 403 || error.response?.status === 401) {
