@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect } from 'react';
-import { Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Modal, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
 import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
@@ -9,11 +9,106 @@ import { useRoutes } from '../context/RoutesContext';
 
 const MyRoutes = () => {
   const navigation = useNavigation();
-  const { myRoutes, loading, error, loadRoutes, cancelRoute, updateRouteStatus } = useRoutes();
+  const { myRoutes, loading, error, loadRoutes, cancelRoute, updateRouteStatus, scannedPackages, isPackageScanned } = useRoutes();
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Estados para modal de verificación
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [verificationError, setVerificationError] = useState('');
 
+  // CRÍTICO: Crear rutas sincronizadas con paquetes escaneados usando useMemo
+  const syncedRoutes = useMemo(() => {
+    const filtered = myRoutes.filter(route => route.status !== 'COMPLETED');
+    console.log('🗂️ MyRoutes - Filtrando rutas completadas:', {
+      total: myRoutes.length,
+      activas: filtered.length,
+      completadas: myRoutes.length - filtered.length
+    });
+    
+    return filtered.map(route => {
+        // Si la ruta tiene paquetes escaneados, debe estar IN_PROGRESS
+        const hasScannedPackages = route.packages?.some(pkg => isPackageScanned(pkg.id));
+        
+        const syncedRoute = {
+          ...route,
+          // Forzar status IN_PROGRESS si hay paquetes escaneados
+          status: hasScannedPackages ? 'IN_PROGRESS' : route.status,
+          packages: route.packages?.map(pkg => ({
+            ...pkg,
+            // Sincronizar estado scanned con el contexto global
+            scanned: isPackageScanned(pkg.id) || pkg.scanned
+          })) || []
+        };
+        
+        // Log para debug
+        if (hasScannedPackages && route.status !== 'IN_PROGRESS') {
+          console.log(`🔄 MyRoutes - Sincronizando ruta ${route.id}: ${route.status} → IN_PROGRESS`);
+        }
+        
+        return syncedRoute;
+      });
+  }, [myRoutes, scannedPackages, isPackageScanned]);
+
+  // CRÍTICO: NO recargar automáticamente para preservar cambios locales
   useEffect(() => {
-    loadRoutes();
+    // Solo cargar rutas si no tenemos ninguna
+    if (myRoutes.length === 0) {
+      console.log('📱 MyRoutes - Cargando rutas por primera vez');
+      loadRoutes();
+    } else {
+      console.log('📱 MyRoutes - YA tenemos rutas, NO recargar para preservar estado local');
+    }
   }, []);
+
+  // DEBUG: Log rutas sincronizadas cuando cambian las originales
+  useEffect(() => {
+    const syncedRoutesDebug = syncedRoutes.map(r => ({
+      id: r.id,
+      status: r.status,
+      packages: r.packages?.length || 0,
+      scannedPackages: r.packages?.filter(pkg => pkg.scanned).length || 0
+    }));
+    
+    console.log('🔄 MyRoutes - Rutas sincronizadas:', syncedRoutesDebug);
+  }, [myRoutes, scannedPackages]);
+
+  // Escuchar cuando la pantalla se enfoca (cuando navegas desde PackageInfo)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('🔥 CRÍTICO MyRoutes - Pantalla enfocada, PRESERVANDO estado local...');
+      console.log('🔥 CRÍTICO MyRoutes - Estado scannedPackages:', Array.from(scannedPackages));
+      console.log('🔥 CRÍTICO MyRoutes - myRoutes originales:', myRoutes.length);
+      
+      // CRÍTICO: NO recargar rutas aquí, solo forzar re-render
+      console.log('🛡️ MyRoutes - EVITANDO loadRoutes() para preservar cambios locales');
+      
+      // Forzar re-render usando un estado local
+      setForceUpdate(prev => prev + 1);
+    });
+
+    return unsubscribe;
+  }, [navigation, scannedPackages, myRoutes]);
+
+  // DEBUG: Log cuando cambian las rutas o paquetes escaneados
+  useEffect(() => {
+    console.log('📱 MyRoutes - Estado actualizado:', {
+      rutasOriginales: myRoutes.length,
+      rutasSincronizadas: syncedRoutes.length,
+      scannedPackagesCount: scannedPackages.size,
+      scannedPackageIds: Array.from(scannedPackages)
+    });
+    
+    // Log detalles de cada ruta SINCRONIZADA
+    syncedRoutes.forEach(route => {
+      console.log(`📋 MyRoutes - Ruta SINCRONIZADA ${route.id}:`, {
+        status: route.status,
+        packages: route.packages?.length || 0,
+        scannedPackages: route.packages?.filter(pkg => pkg.scanned).length || 0
+      });
+    });
+  }, [myRoutes, scannedPackages]);
 
   const handleCancelRoute = async (routeId) => {
     Alert.alert(
@@ -63,19 +158,95 @@ const MyRoutes = () => {
     }
   };
 
-  const handleCompleteDelivery = async (routeId) => {
-    try {
-      await updateRouteStatus(routeId, 'COMPLETED');
-      Alert.alert('Éxito', 'Ruta completada exitosamente');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo completar la ruta');
+  const handleCompleteDelivery = async (route) => {
+    console.log('🔐 MyRoutes - Abriendo modal de verificación para ruta:', route.id);
+    
+    // MOSTRAR CÓDIGO EN CONSOLA - SOLO PARA CONSOLA, NO EN PANTALLA
+    const currentVerificationCode = route.verificationCode || route.confirmationCode;
+    if (currentVerificationCode) {
+      console.log('🔐🔐🔐 EL CODIGO DE VERIFICACION ES:', currentVerificationCode, '🔐🔐🔐');
+    } else {
+      console.log('⚠️ MyRoutes - No se encontró código de verificación para la ruta');
+    }
+    
+    // Abrir modal de verificación
+    setSelectedRoute(route);
+    setVerificationCode('');
+    setVerificationError('');
+    setShowVerificationModal(true);
+  };
+
+  // Nueva función para verificar código e completar entrega
+  const handleVerifyAndComplete = async () => {
+    if (!selectedRoute) return;
+    
+    const expectedCode = selectedRoute.verificationCode || selectedRoute.confirmationCode;
+    
+    console.log('🔐 MyRoutes - Verificando código:', {
+      ingresado: verificationCode,
+      esperado: expectedCode,
+      ruta: selectedRoute.id
+    });
+    
+    // Verificar código
+    if (verificationCode.trim() === expectedCode) {
+      try {
+        console.log('✅ MyRoutes - Código correcto, completando entrega...');
+        
+        // Cerrar modal
+        setShowVerificationModal(false);
+        setSelectedRoute(null);
+        setVerificationCode('');
+        setVerificationError('');
+        
+        // Completar entrega con timestamp
+        const completedAt = new Date().toISOString();
+        await updateRouteStatus(selectedRoute.id, 'COMPLETED', { 
+          completedAt,
+          completedDate: new Date().toLocaleDateString(),
+          completedTime: new Date().toLocaleTimeString()
+        });
+        
+        console.log('✅ MyRoutes - Entrega completada con timestamp:', {
+          ruta: selectedRoute.id,
+          completedAt,
+          startedAt: selectedRoute.startedAt
+        });
+        
+        console.log('📝 MyRoutes - La ruta desaparecerá de "Mis Rutas" y estará disponible en el historial de pedidos');
+        
+        // Forzar actualización para que la ruta desaparezca inmediatamente
+        setTimeout(() => {
+          setForceUpdate(prev => prev + 1);
+        }, 100);
+        
+        Alert.alert(
+          '✅ Entrega Completada', 
+          'La entrega se ha completado exitosamente y se ha agregado al historial de pedidos.'
+        );
+      } catch (error) {
+        console.error('❌ MyRoutes - Error completando entrega:', error);
+        Alert.alert('Error', 'No se pudo completar la entrega');
+      }
+    } else {
+      // Código incorrecto
+      console.log('❌ MyRoutes - Código incorrecto. Esperado:', expectedCode, 'Ingresado:', verificationCode.trim());
+      setVerificationError('Código de verificación incorrecto');
     }
   };
 
+  // Cancelar modal de verificación
+  const handleCancelVerification = () => {
+    setShowVerificationModal(false);
+    setSelectedRoute(null);
+    setVerificationCode('');
+    setVerificationError('');
+  };
+
   const getStatusCounts = () => {
-    const assigned = myRoutes.filter(route => route.status === 'ASSIGNED').length;
-    const inProgress = myRoutes.filter(route => route.status === 'IN_PROGRESS').length;
-    const completed = myRoutes.filter(route => route.status === 'COMPLETED').length;
+    const assigned = syncedRoutes.filter(route => route.status === 'ASSIGNED').length;
+    const inProgress = syncedRoutes.filter(route => route.status === 'IN_PROGRESS').length;
+    const completed = syncedRoutes.filter(route => route.status === 'COMPLETED').length;
     
     return { assigned, inProgress, completed };
   };
@@ -93,9 +264,10 @@ const MyRoutes = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <MaterialIcons name="local-shipping" size={64} color={COLORS.textSecondary} />
-      <Text style={styles.emptyTitle}>No tienes rutas asignadas</Text>
+      <Text style={styles.emptyTitle}>No tienes rutas activas</Text>
       <Text style={styles.emptySubtitle}>
-        Ve a "Rutas Disponibles" para seleccionar una ruta
+        Ve a "Rutas Disponibles" para seleccionar una ruta.{'\n'}
+        Las rutas completadas aparecen en el historial desde tu perfil.
       </Text>
       <TouchableOpacity
         style={styles.availableRoutesButton}
@@ -146,28 +318,21 @@ const MyRoutes = () => {
         </View>
       </View>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - SIN historial de pedidos */}
       <View style={styles.quickActions}>
         <TouchableOpacity
-          style={styles.quickActionButton}
+          style={[styles.quickActionButton, { flex: 1 }]}
           onPress={() => navigation.navigate('QRScanner')}
         >
           <MaterialIcons name="qr-code-scanner" size={24} color={COLORS.primary} />
           <Text style={styles.quickActionText}>Escanear QR</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.quickActionButton}
+          style={[styles.quickActionButton, { flex: 1 }]}
           onPress={() => navigation.navigate('AvailableRoutes')}
         >
           <MaterialIcons name="add-road" size={24} color={COLORS.primary} />
           <Text style={styles.quickActionText}>Nuevas Rutas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.quickActionButton}
-          onPress={() => navigation.navigate('RouteHistory')}
-        >
-          <MaterialIcons name="history" size={24} color={COLORS.primary} />
-          <Text style={styles.quickActionText}>Historial</Text>
         </TouchableOpacity>
       </View>
 
@@ -185,17 +350,104 @@ const MyRoutes = () => {
         </View>
       )}
 
-      {/* Routes List */}
+      {/* Routes List - USANDO SYNCEDROUTES */}
       <FlatList
-        data={myRoutes}
+        data={syncedRoutes}
         renderItem={renderRouteCard}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={myRoutes.length === 0 ? styles.emptyListContainer : styles.listContainer}
+        contentContainerStyle={syncedRoutes.length === 0 ? styles.emptyListContainer : styles.listContainer}
         ListEmptyComponent={!loading && !error ? renderEmptyState : null}
         refreshing={loading}
-        onRefresh={loadRoutes}
+        onRefresh={() => {
+          console.log('🔄 MyRoutes - Refresh manual solicitado');
+          loadRoutes();
+        }}
       />
+
+      {/* Modal de Verificación */}
+      <Modal
+        visible={showVerificationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelVerification}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <MaterialIcons name="verified-user" size={24} color={COLORS.primary} />
+              <Text style={styles.modalTitle}>Verificación de Entrega</Text>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              Ingresa el código de verificación para completar la entrega:
+            </Text>
+            
+            {selectedRoute && (
+              <View style={styles.routeInfo}>
+                <Text style={styles.routeLabel}>Ruta: {selectedRoute.id}</Text>
+                <Text style={styles.routeDestination}>{selectedRoute.destination}</Text>
+                {/* DEBUG - Log datos de la ruta seleccionada */}
+                {console.log('🔍 Modal - Datos de ruta seleccionada:', {
+                  id: selectedRoute.id,
+                  verificationCode: selectedRoute.verificationCode,
+                  confirmationCode: selectedRoute.confirmationCode,
+                  packages: selectedRoute.packages?.length || 0
+                })}
+              </View>
+            )}
+            
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[
+                  styles.codeInput,
+                  verificationError ? styles.inputError : null
+                ]}
+                value={verificationCode}
+                onChangeText={(text) => {
+                  setVerificationCode(text);
+                  setVerificationError(''); // Limpiar error al escribir
+                }}
+                placeholder="Código de verificación"
+                placeholderTextColor={COLORS.textSecondary}
+                keyboardType="numeric"
+                maxLength={10}
+                autoFocus={true}
+                selectTextOnFocus={true}
+              />
+              
+              {verificationError ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: SPACING.xs }}>
+                  <MaterialIcons name="error" size={16} color={COLORS.error} />
+                  <Text style={styles.errorMessage}>{verificationError}</Text>
+                </View>
+              ) : null}
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={handleCancelVerification}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalButton, 
+                  styles.confirmButton,
+                  !verificationCode.trim() ? styles.disabledButton : null
+                ]}
+                onPress={handleVerifyAndComplete}
+                disabled={!verificationCode.trim()}
+              >
+                <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />
+                <Text style={styles.confirmButtonText}>Verificar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -331,6 +583,113 @@ const styles = StyleSheet.create({
     color: COLORS.textOnPrimary,
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    width: '85%',
+    maxWidth: 400,
+    ...ELEVATION.high,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginLeft: SPACING.sm,
+  },
+  modalSubtitle: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+    textAlign: 'center',
+  },
+  routeInfo: {
+    backgroundColor: COLORS.lightGray,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  routeLabel: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  routeDestination: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+    marginTop: SPACING.xs,
+  },
+  inputContainer: {
+    marginBottom: SPACING.lg,
+  },
+  codeInput: {
+    backgroundColor: COLORS.background,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 2,
+    borderColor: COLORS.divider,
+    fontSize: FONT_SIZES.lg,
+    textAlign: 'center',
+    color: COLORS.textPrimary,
+    fontWeight: 'bold',
+  },
+  inputError: {
+    borderColor: COLORS.error,
+  },
+  errorMessage: {
+    color: COLORS.error,
+    fontSize: FONT_SIZES.sm,
+    marginLeft: SPACING.sm,
+    marginTop: SPACING.xs,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+    ...ELEVATION.low,
+  },
+  cancelButton: {
+    backgroundColor: COLORS.textSecondary,
+  },
+  cancelButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: COLORS.success,
+  },
+  confirmButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    marginLeft: SPACING.xs,
+  },
+  disabledButton: {
+    backgroundColor: COLORS.lightGray,
+    opacity: 0.6,
   },
 });
 

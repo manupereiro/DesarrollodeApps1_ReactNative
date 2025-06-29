@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Linking,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -18,13 +19,21 @@ import { packagesService } from '../services/packagesService';
 const PackageInfoScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { packageData, qrCode } = route.params || {};
+  const { packageData, qrCode, fromQRScan } = route.params || {};
   const [package_, setPackage] = useState(packageData || null);
   const [loading, setLoading] = useState(!packageData);
   const [completing, setCompleting] = useState(false);
-  const { updateRouteStatus } = useRoutes();
+  const { updateRouteStatus, markPackageScanned } = useRoutes();
 
   useEffect(() => {
+    console.log('📦 PackageInfoScreen - Parámetros recibidos:', {
+      hasPackageData: !!packageData,
+      hasQRCode: !!qrCode,
+      fromQRScan: !!fromQRScan,
+      packageId: packageData?.id,
+      routeId: packageData?.routeId
+    });
+    
     if (!packageData && qrCode) {
       loadPackageInfo();
     }
@@ -50,6 +59,100 @@ const PackageInfoScreen = () => {
         setPackage(completedPackage);
         // Actualizar estado de la ruta a COMPLETED
         updateRouteStatus(completedPackage.routeId, 'COMPLETED');
+      }
+    });
+  };
+
+  const handleConfirmScannedPackage = () => {
+    console.log('🔥 CRÍTICO - handleConfirmScannedPackage EJECUTÁNDOSE');
+    
+    // GENERAR código de verificación automáticamente
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6 dígitos
+    console.log('🔐 PackageInfo - CÓDIGO DE VERIFICACIÓN GENERADO:', verificationCode);
+    
+    // CRÍTICO: Re-marcar el paquete como escaneado para asegurar persistencia
+    console.log('🔥 CRÍTICO - Marcando paquete con datos:', {
+      routeId: package_.routeId,
+      packageId: package_.id,
+      verificationCode: verificationCode
+    });
+    
+    // Crear datos actualizados del paquete CON código de verificación
+    const updatedPackageData = {
+      ...package_, 
+      scanned: true, 
+      scannedAt: new Date().toISOString(),
+      verificationCode: verificationCode // AGREGAR código al paquete
+    };
+    
+    markPackageScanned(
+      package_.routeId,
+      package_.id,
+      updatedPackageData
+    );
+    
+    // También asegurar que la ruta esté en IN_PROGRESS CON código de verificación y timestamp
+    const startedAt = new Date().toISOString();
+    updateRouteStatus(package_.routeId, 'IN_PROGRESS', { 
+      verificationCode,
+      startedAt,
+      startedDate: new Date().toLocaleDateString(),
+      startedTime: new Date().toLocaleTimeString()
+    });
+    
+    // FORZAR multiple veces para asegurar persistencia
+    setTimeout(() => {
+      console.log('🔥 CRÍTICO - Re-marcando paquete después de 200ms');
+      markPackageScanned(
+        package_.routeId,
+        package_.id,
+        updatedPackageData
+      );
+    }, 200);
+    
+    setTimeout(() => {
+      console.log('🔥 CRÍTICO - Re-marcando paquete después de 500ms');
+      markPackageScanned(
+        package_.routeId,
+        package_.id,
+        updatedPackageData
+      );
+    }, 500);
+    
+    console.log('🎯 PackageInfo - Paquete confirmado con código de verificación:', verificationCode);
+    
+    Alert.alert(
+      '✅ Paquete Confirmado',
+      `El paquete ha sido marcado correctamente y se ha generado el código de verificación.\n\nAhora está listo para completar la entrega en "Mis Rutas".`,
+      [
+        {
+          text: 'Ir a Mis Rutas',
+          onPress: () => {
+            // Esperar un poco antes de navegar para que se procesen las actualizaciones
+            setTimeout(() => {
+              navigation.navigate('MyRoutes');
+            }, 100);
+          }
+        }
+      ]
+    );
+  };
+
+  const openInGoogleMaps = () => {
+    const address = package_?.address || '';
+    if (!address) {
+      Alert.alert('Error', 'No hay dirección disponible');
+      return;
+    }
+    
+    const encodedAddress = encodeURIComponent(address);
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se puede abrir Google Maps');
       }
     });
   };
@@ -171,6 +274,14 @@ const PackageInfoScreen = () => {
             <MaterialIcons name="location-on" size={20} color={COLORS.primary} />
             <Text style={styles.infoText}>{package_.address}</Text>
           </View>
+          {/* Botón Google Maps */}
+          <TouchableOpacity 
+            style={styles.mapsButton}
+            onPress={openInGoogleMaps}
+          >
+            <MaterialIcons name="map" size={20} color={COLORS.textOnPrimary} />
+            <Text style={styles.mapsButtonText}>Abrir en Google Maps</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Package Details */}
@@ -180,23 +291,36 @@ const PackageInfoScreen = () => {
             <View style={styles.detailItem}>
               <MaterialIcons name="fitness-center" size={20} color={COLORS.textSecondary} />
               <Text style={styles.detailLabel}>Peso</Text>
-              <Text style={styles.detailValue}>{package_.weight}</Text>
+              <Text style={styles.detailValue}>{package_.weight || '1.0 kg'}</Text>
             </View>
             <View style={styles.detailItem}>
               <MaterialIcons name="straighten" size={20} color={COLORS.textSecondary} />
               <Text style={styles.detailLabel}>Dimensiones</Text>
-              <Text style={styles.detailValue}>{package_.dimensions}</Text>
+              <Text style={styles.detailValue}>{package_.dimensions || '25x20x15 cm'}</Text>
             </View>
             <View style={styles.detailItem}>
               <MaterialIcons name="schedule" size={20} color={COLORS.textSecondary} />
               <Text style={styles.detailLabel}>Entrega Estimada</Text>
-              <Text style={styles.detailValue}>{package_.estimatedDelivery}</Text>
+              <Text style={styles.detailValue}>{package_.estimatedDelivery || 'Hoy'}</Text>
             </View>
           </View>
         </View>
 
-        {/* Confirmation Code (only if IN_PROGRESS) */}
-        {package_.status === 'IN_PROGRESS' && (
+        {/* Estado del escaneo */}
+        {fromQRScan && (
+          <View style={styles.section}>
+            <View style={styles.scannedSuccessContainer}>
+              <MaterialIcons name="check-circle" size={32} color={COLORS.success} />
+              <Text style={styles.scannedSuccessTitle}>¡Paquete Escaneado Exitosamente!</Text>
+              <Text style={styles.scannedSuccessText}>
+                El paquete ha sido activado y está listo para entrega
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Confirmation Code - Solo mostrar cuando NO viene del QR scan inicial */}
+        {(package_.status === 'IN_PROGRESS' && !fromQRScan && package_.confirmationCode) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Código de Confirmación</Text>
             <View style={styles.confirmationCodeContainer}>
@@ -213,38 +337,45 @@ const PackageInfoScreen = () => {
 
       {/* Action Button */}
       <View style={styles.buttonContainer}>
-        {package_.status === 'ASSIGNED' && (
+        {/* Si viene del QR scan, mostrar botón de confirmar */}
+        {fromQRScan ? (
           <TouchableOpacity
-            style={[styles.actionButton, styles.activateButton]}
-            onPress={handleActivateRoute}
-            disabled={completing}
+            style={[styles.actionButton, styles.confirmButton]}
+            onPress={handleConfirmScannedPackage}
           >
-            {completing ? (
-              <ActivityIndicator color={COLORS.textOnPrimary} />
-            ) : (
-              <>
-                <MaterialIcons name="play-arrow" size={20} color={COLORS.textOnPrimary} />
-                <Text style={styles.buttonText}>Activar Ruta</Text>
-              </>
+            <MaterialIcons name="verified" size={20} color={COLORS.textOnPrimary} />
+            <Text style={styles.buttonText}>Confirmar y Ver Mis Rutas</Text>
+          </TouchableOpacity>
+        ) : (
+          // Flujo normal para otros casos
+          <>
+            {package_.status === 'ASSIGNED' && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.activateButton]}
+                onPress={handleActivateRoute}
+                disabled={completing}
+              >
+                {completing ? (
+                  <ActivityIndicator color={COLORS.textOnPrimary} />
+                ) : (
+                  <>
+                    <MaterialIcons name="play-arrow" size={20} color={COLORS.textOnPrimary} />
+                    <Text style={styles.buttonText}>Activar Ruta</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        )}
-        
-        {package_.status === 'IN_PROGRESS' && (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.completeButton]}
-            onPress={handleCompleteDelivery}
-          >
-            <MaterialIcons name="check-circle" size={20} color={COLORS.textOnPrimary} />
-            <Text style={styles.buttonText}>Completar Entrega</Text>
-          </TouchableOpacity>
-        )}
-
-        {package_.status === 'COMPLETED' && (
-          <View style={[styles.actionButton, styles.completedButton]}>
-            <MaterialIcons name="check-circle" size={20} color={COLORS.textOnPrimary} />
-            <Text style={styles.buttonText}>Entrega Completada</Text>
-          </View>
+            
+            {package_.status === 'IN_PROGRESS' && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.completeButton]}
+                onPress={handleCompleteDelivery}
+              >
+                <MaterialIcons name="check-circle" size={20} color={COLORS.textOnPrimary} />
+                <Text style={styles.buttonText}>Completar Entrega</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -447,6 +578,48 @@ const styles = StyleSheet.create({
     color: COLORS.textOnPrimary,
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
+  },
+  mapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary,
+    ...ELEVATION.low,
+  },
+  mapsButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.textOnPrimary,
+    marginLeft: SPACING.sm,
+  },
+  scannedSuccessContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: `${COLORS.success}15`,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  scannedSuccessTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.success,
+    marginTop: SPACING.sm,
+    textAlign: 'center',
+  },
+  scannedSuccessText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
+  confirmButton: {
+    backgroundColor: COLORS.success,
   },
 });
 

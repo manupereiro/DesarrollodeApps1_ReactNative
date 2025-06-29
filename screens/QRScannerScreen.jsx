@@ -12,7 +12,7 @@ const QRScannerScreen = () => {
   const [scanned, setScanned] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const navigation = useNavigation();
-  const { updateRouteStatus } = useRoutes();
+  const { updateRouteStatus, markPackageScanned } = useRoutes();
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -30,8 +30,15 @@ const QRScannerScreen = () => {
     setIsValidating(true);
     
     console.log('📱 QR Code escaneado:', data);
+    console.log('📱 QR Code details:', {
+      length: data.length,
+      preview: data.substring(0, 100)
+    });
     
     try {
+      // Enviar DIRECTAMENTE a validación - el servicio se encarga de todo
+      console.log('🔍 Enviando QR a validación:', data);
+      
       // Validar QR con el servicio de paquetes
       const validationResult = await packagesService.validateQR(data);
       
@@ -50,34 +57,42 @@ const QRScannerScreen = () => {
               }
             },
             {
-              text: 'Activar Ruta',
-              onPress: async () => {
-                try {
-                  // Activar la ruta (cambiar estado a IN_PROGRESS)
-                  await packagesService.activateRoute(
-                    validationResult.packageInfo.routeId,
-                    validationResult.packageInfo.id
-                  );
-                  
-                  // Actualizar estado en el contexto
-                  await updateRouteStatus(
-                    validationResult.packageInfo.routeId,
-                    'IN_PROGRESS'
-                  );
-                  
-                  // Navegar a PackageInfo con la información del paquete
-                  navigation.navigate('PackageInfo', {
-                    packageData: validationResult.packageInfo,
-                    qrCode: data
-                  });
-                } catch (error) {
-                  Alert.alert(
-                    'Error',
-                    error.error || 'No se pudo activar la ruta'
-                  );
-                  setScanned(false);
-                  setIsValidating(false);
-                }
+              text: 'Ver Información del Paquete',
+              onPress: () => {
+                console.log('🚀 Navegando a PackageInfo con datos:', validationResult.packageInfo);
+                
+                // 1. MARCAR PAQUETE COMO ESCANEADO INMEDIATAMENTE
+                markPackageScanned(
+                  validationResult.packageInfo.routeId,
+                  validationResult.packageInfo.id,
+                  validationResult.packageInfo
+                );
+                
+                // 2. ACTUALIZAR ESTADO DE RUTA A IN_PROGRESS
+                updateRouteStatus(
+                  validationResult.packageInfo.routeId,
+                  'IN_PROGRESS'
+                );
+                
+                // 3. QUITAR ESTADOS DE LOADING
+                setScanned(false);
+                setIsValidating(false);
+                
+                // 4. IR DIRECTO A PACKAGEINFO
+                const packageWithScannedFlag = {
+                  ...validationResult.packageInfo,
+                  scanned: true,
+                  scannedAt: new Date().toISOString(),
+                  status: 'IN_PROGRESS'
+                };
+                
+                console.log('🎯 QRScanner - Navegando con paquete marcado como escaneado:', packageWithScannedFlag);
+                
+                navigation.navigate('PackageInfo', {
+                  packageData: packageWithScannedFlag,
+                  qrCode: data,
+                  fromQRScan: true
+                });
               }
             }
           ]
@@ -95,24 +110,7 @@ const QRScannerScreen = () => {
                 setIsValidating(false);
               }
             },
-            {
-              text: 'Ver QRs Válidos',
-              onPress: () => {
-                Alert.alert(
-                  'QRs de Prueba',
-                  'Códigos válidos para testing:\n• PKG001 - Smartphone Samsung\n• PKG002 - Zapatillas Nike\n• PKG003 - Libros Harry Potter',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        setScanned(false);
-                        setIsValidating(false);
-                      }
-                    }
-                  ]
-                );
-              }
-            }
+
           ]
         );
       }
@@ -199,34 +197,39 @@ const QRScannerScreen = () => {
           
           {/* Instrucciones */}
           <View style={styles.instructionsContainer}>
-            <MaterialIcons name="qr-code-scanner" size={32} color={COLORS.textOnPrimary} />
-            <Text style={styles.instructionText}>
-              Apunta la cámara al código QR del paquete
-            </Text>
-            <Text style={styles.instructionSubtext}>
-              Solo códigos QR de paquetes en tus rutas asignadas
-            </Text>
-          </View>
-
-          {/* Estado de validación */}
-          {isValidating && (
-            <View style={styles.validatingContainer}>
-              <ActivityIndicator size="large" color={COLORS.textOnPrimary} />
-              <Text style={styles.validatingText}>Validando QR...</Text>
+            <View style={styles.instructionItem}>
+              <MaterialIcons name="info" size={20} color={COLORS.primary} />
+              <Text style={styles.instructionText}>
+                Apunta la cámara hacia el código QR del paquete
+              </Text>
             </View>
-          )}
-
-          {/* Manual scan again button */}
-          {scanned && !isValidating && (
-            <TouchableOpacity
-              style={styles.scanAgainButton}
-              onPress={() => setScanned(false)}
-            >
-              <MaterialIcons name="refresh" size={20} color={COLORS.textOnPrimary} />
-              <Text style={styles.scanAgainText}>Escanear otro QR</Text>
-            </TouchableOpacity>
-          )}
+            <View style={styles.instructionItem}>
+              <MaterialIcons name="qr-code" size={20} color={COLORS.primary} />
+              <Text style={styles.instructionText}>
+                El QR debe venir de "Mis Rutas" → Paquetes
+              </Text>
+            </View>
+          </View>
         </View>
+
+        {/* Estado de validación */}
+        {isValidating && (
+          <View style={styles.validatingContainer}>
+            <ActivityIndicator size="large" color={COLORS.textOnPrimary} />
+            <Text style={styles.validatingText}>Validando QR...</Text>
+          </View>
+        )}
+
+        {/* Manual scan again button */}
+        {scanned && !isValidating && (
+          <TouchableOpacity
+            style={styles.scanAgainButton}
+            onPress={() => setScanned(false)}
+          >
+            <MaterialIcons name="refresh" size={20} color={COLORS.textOnPrimary} />
+            <Text style={styles.scanAgainText}>Escanear otro QR</Text>
+          </TouchableOpacity>
+        )}
       </CameraView>
     </View>
   );
@@ -325,19 +328,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,
   },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
   instructionText: {
     color: COLORS.textOnPrimary,
     fontSize: FONT_SIZES.md,
     textAlign: 'center',
     marginTop: SPACING.sm,
+    marginLeft: SPACING.xs,
     fontWeight: '600',
-  },
-  instructionSubtext: {
-    color: COLORS.textOnPrimary,
-    fontSize: FONT_SIZES.sm,
-    textAlign: 'center',
-    marginTop: SPACING.xs,
-    opacity: 0.8,
   },
   validatingContainer: {
     position: 'absolute',

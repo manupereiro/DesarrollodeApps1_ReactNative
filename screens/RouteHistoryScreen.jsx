@@ -123,13 +123,26 @@ const RouteHistoryScreen = ({ navigation }) => {
               onPress={() => handleRoutePress(item)}
             >
               <View style={styles.routeHeader}>
-                <View>
+                <View style={styles.timestampContainer}>
                   <Text style={styles.routeDate}>
-                    {new Date(item.completedAt || item.updatedAt).toLocaleDateString()}
+                    {item.completedDate || new Date(item.completedAt || item.updatedAt).toLocaleDateString()}
                   </Text>
-                  <Text style={styles.routeTime}>
-                    {new Date(item.completedAt || item.updatedAt).toLocaleTimeString()}
-                  </Text>
+                  <View style={styles.timeDetails}>
+                    <View style={styles.timeItem}>
+                      <Ionicons name="play-circle" size={16} color="#4CAF50" />
+                      <Text style={styles.timeLabel}>Iniciada:</Text>
+                      <Text style={styles.timeValue}>
+                        {item.startedTime || (item.startedAt ? new Date(item.startedAt).toLocaleTimeString() : 'N/A')}
+                      </Text>
+                    </View>
+                    <View style={styles.timeItem}>
+                      <Ionicons name="checkmark-circle" size={16} color="#2196F3" />
+                      <Text style={styles.timeLabel}>Completada:</Text>
+                      <Text style={styles.timeValue}>
+                        {item.completedTime || new Date(item.completedAt || item.updatedAt).toLocaleTimeString()}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusText}>Completada</Text>
@@ -261,15 +274,32 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  timestampContainer: {
+    flex: 1,
+  },
   routeDate: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 8,
   },
-  routeTime: {
-    fontSize: 14,
+  timeDetails: {
+    gap: 6,
+  },
+  timeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#666',
-    marginTop: 2,
+  },
+  timeValue: {
+    fontSize: 12,
+    color: '#333',
+    fontWeight: '500',
   },
   statusBadge: {
     backgroundColor: '#E8F5E9',
