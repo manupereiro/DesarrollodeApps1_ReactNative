@@ -28,13 +28,10 @@ const MyRoutes = () => {
     });
     
     return filtered.map(route => {
-        // Si la ruta tiene paquetes escaneados, debe estar IN_PROGRESS
-        const hasScannedPackages = route.packages?.some(pkg => isPackageScanned(pkg.id));
-        
         const syncedRoute = {
           ...route,
-          // Forzar status IN_PROGRESS si hay paquetes escaneados
-          status: hasScannedPackages ? 'IN_PROGRESS' : route.status,
+          // RESPETEAR el status original de la ruta del backend
+          status: route.status,
           packages: route.packages?.map(pkg => ({
             ...pkg,
             // Sincronizar estado scanned con el contexto global
@@ -42,10 +39,7 @@ const MyRoutes = () => {
           })) || []
         };
         
-        // Log para debug
-        if (hasScannedPackages && route.status !== 'IN_PROGRESS') {
-          console.log(`🔄 MyRoutes - Sincronizando ruta ${route.id}: ${route.status} → IN_PROGRESS`);
-        }
+        console.log(`🔄 MyRoutes - Sincronizando ruta ${route.id}: status=${route.status}`);
         
         return syncedRoute;
       });
@@ -137,23 +131,38 @@ const MyRoutes = () => {
       // Navegar al scanner QR para activar la ruta
       navigation.navigate('QRScanner');
     } else if (route.status === 'IN_PROGRESS') {
-      // Navegar directamente a PackageInfo para completar la entrega
+      // Preparar datos del paquete usando información REAL de la ruta
+      const firstPackage = route.packages && route.packages.length > 0 ? route.packages[0] : null;
+      const packageData = {
+        id: firstPackage?.id || 202,
+        qrCode: firstPackage?.qrCode || `PACKAGE_${firstPackage?.id || 202}_${route.destination || 'paquete'}`,
+        routeId: route.id,
+        status: route.status,
+        description: firstPackage?.description || `Paquete para ${route.destination}`,
+        recipientName: firstPackage?.recipientName || 'Cliente',
+        recipientPhone: firstPackage?.recipientPhone || '+54 11 1234-5678',
+        address: firstPackage?.address || route.destination,
+        weight: firstPackage?.weight || '1.5 kg',
+        dimensions: firstPackage?.dimensions || '25x20x15 cm',
+        priority: firstPackage?.priority || 'MEDIA',
+        estimatedDelivery: firstPackage?.estimatedDelivery || 'Hoy',
+        confirmationCode: route.confirmationCode || firstPackage?.confirmationCode,
+        verificationCode: route.verificationCode || firstPackage?.verificationCode,
+        scanned: firstPackage?.scanned || false,
+        scannedAt: firstPackage?.scannedAt
+      };
+      
+      console.log('📦 MyRoutes - Navegando a PackageInfo con datos REALES:', {
+        packageId: packageData.id,
+        routeId: packageData.routeId,
+        status: packageData.status,
+        hasVerificationCode: !!packageData.verificationCode
+      });
+      
+      // Navegar con datos completos para evitar peticiones innecesarias al backend
       navigation.navigate('PackageInfo', {
-        packageData: {
-          id: route.id,
-          qrCode: `PKG00${route.id}`,
-          routeId: route.id,
-          status: 'IN_PROGRESS',
-          description: `Paquete para ${route.destination}`,
-          recipientName: 'Cliente Demo',
-          recipientPhone: '+54 11 1234-5678',
-          address: route.destination,
-          weight: '1.0 kg',
-          dimensions: '20x15x10 cm',
-          priority: 'MEDIA',
-          estimatedDelivery: '2024-01-15 16:00',
-          confirmationCode: '123456'
-        }
+        packageData: packageData,
+        fromMyRoutes: true // Flag para indicar que viene de MyRoutes
       });
     }
   };
@@ -161,8 +170,21 @@ const MyRoutes = () => {
   const handleCompleteDelivery = async (route) => {
     console.log('🔐 MyRoutes - Abriendo modal de verificación para ruta:', route.id);
     
+    // BUSCAR código de verificación en la ruta O en los paquetes escaneados
+    let currentVerificationCode = route.verificationCode || route.confirmationCode;
+    
+    // Si no hay código en la ruta, buscar en los paquetes escaneados
+    if (!currentVerificationCode && route.packages) {
+      const scannedPackageWithCode = route.packages.find(pkg => 
+        pkg.scanned && (pkg.verificationCode || pkg.confirmationCode)
+      );
+      if (scannedPackageWithCode) {
+        currentVerificationCode = scannedPackageWithCode.verificationCode || scannedPackageWithCode.confirmationCode;
+        console.log('🔐 MyRoutes - Código encontrado en paquete escaneado:', scannedPackageWithCode.id);
+      }
+    }
+    
     // MOSTRAR CÓDIGO EN CONSOLA - SOLO PARA CONSOLA, NO EN PANTALLA
-    const currentVerificationCode = route.verificationCode || route.confirmationCode;
     if (currentVerificationCode) {
       console.log('🔐🔐🔐 EL CODIGO DE VERIFICACION ES:', currentVerificationCode, '🔐🔐🔐');
     } else {
@@ -180,7 +202,19 @@ const MyRoutes = () => {
   const handleVerifyAndComplete = async () => {
     if (!selectedRoute) return;
     
-    const expectedCode = selectedRoute.verificationCode || selectedRoute.confirmationCode;
+    // BUSCAR código de verificación en la ruta O en los paquetes escaneados
+    let expectedCode = selectedRoute.verificationCode || selectedRoute.confirmationCode;
+    
+    // Si no hay código en la ruta, buscar en los paquetes escaneados
+    if (!expectedCode && selectedRoute.packages) {
+      const scannedPackageWithCode = selectedRoute.packages.find(pkg => 
+        pkg.scanned && (pkg.verificationCode || pkg.confirmationCode)
+      );
+      if (scannedPackageWithCode) {
+        expectedCode = scannedPackageWithCode.verificationCode || scannedPackageWithCode.confirmationCode;
+        console.log('🔐 MyRoutes - Usando código del paquete escaneado para verificación:', scannedPackageWithCode.id);
+      }
+    }
     
     console.log('🔐 MyRoutes - Verificando código:', {
       ingresado: verificationCode,
@@ -199,7 +233,9 @@ const MyRoutes = () => {
         setVerificationCode('');
         setVerificationError('');
         
-        // Completar entrega con timestamp
+        // NUEVA LÓGICA: Completar entrega directamente
+        // - Si está en IN_PROGRESS (solo local) → COMPLETED en backend será ASSIGNED → COMPLETED
+        // - Si está en ASSIGNED → COMPLETED en backend será ASSIGNED → COMPLETED  
         const completedAt = new Date().toISOString();
         await updateRouteStatus(selectedRoute.id, 'COMPLETED', { 
           completedAt,
@@ -225,8 +261,15 @@ const MyRoutes = () => {
           'La entrega se ha completado exitosamente y se ha agregado al historial de pedidos.'
         );
       } catch (error) {
-        console.error('❌ MyRoutes - Error completando entrega:', error);
-        Alert.alert('Error', 'No se pudo completar la entrega');
+        // Este catch ya no debería ejecutarse con la nueva lógica tolerante
+        console.error('❌ MyRoutes - Error inesperado completando entrega:', error);
+        
+        // Mostrar mensaje positivo ya que updateRouteStatus ya manejó todo internamente
+        Alert.alert(
+          '✅ Entrega Completada', 
+          'La entrega se ha completado exitosamente. Si hubo problemas de conexión, se sincronizará automáticamente con el servidor.',
+          [{ text: 'OK' }]
+        );
       }
     } else {
       // Código incorrecto

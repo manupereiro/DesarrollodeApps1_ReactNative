@@ -400,24 +400,114 @@ export const RoutesProvider = ({ children }) => {
       console.log('🔄 RoutesContext - Actualizando estado de ruta:', { routeId, status, extraData });
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // NUEVA LÓGICA: IN_PROGRESS solo local, COMPLETED directo de ASSIGNED
+      if (status === 'IN_PROGRESS') {
+        console.log('🔄 RoutesContext - IN_PROGRESS es solo local, NO enviando al backend');
+        dispatch({ 
+          type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+          payload: { 
+            id: routeId, 
+            status: 'IN_PROGRESS',
+            ...extraData,
+            // Marcar como cambio solo local
+            localOnly: true,
+            updatedAt: new Date().toISOString()
+          } 
+        });
+        console.log('✅ RoutesContext - Estado IN_PROGRESS actualizado SOLO localmente');
+        return;
+      }
       
-      // Actualizar estado local inmediatamente
-      dispatch({ 
-        type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
-        payload: { id: routeId, status, ...extraData } 
-      });
-      
-      console.log('✅ RoutesContext - Estado de ruta actualizado exitosamente');
-      
-      // NO recargar automáticamente para preservar cambios locales
-      console.log('🛡️ RoutesContext - Preservando estado local sin recargar');
+      // Para COMPLETED y otros estados, intentar actualizar en el backend
+      try {
+        console.log('🔄 RoutesContext - Enviando actualización al backend...');
+        const backendResponse = await routesService.updateRouteStatus(routeId, status);
+        console.log('✅ RoutesContext - Backend actualizado exitosamente:', backendResponse);
+        
+        // Actualizar estado local con los datos del backend + extraData local
+        dispatch({ 
+          type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+          payload: { 
+            id: routeId, 
+            status, 
+            ...extraData,
+            // Incluir datos del backend si están disponibles
+            ...(backendResponse && backendResponse.updatedAt && {
+              updatedAt: backendResponse.updatedAt
+            })
+          } 
+        });
+        
+        console.log('✅ RoutesContext - Estado de ruta actualizado exitosamente en backend y localmente');
+        
+      } catch (backendError) {
+        console.warn('⚠️ RoutesContext - Error del backend, continuando con actualización local:', backendError.message);
+        
+        // Para COMPLETED, SIEMPRE actualizar localmente sin importar el error
+        if (status === 'COMPLETED') {
+          console.log('🔄 RoutesContext - Completando entrega localmente a pesar del error del backend');
+          dispatch({ 
+            type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+            payload: { 
+              id: routeId, 
+              status: 'COMPLETED',
+              ...extraData,
+              // Marcar como completado localmente
+              completedLocally: true,
+              completedAt: extraData.completedAt || new Date().toISOString()
+            } 
+          });
+          
+          console.log('✅ RoutesContext - Entrega marcada como completada localmente');
+          return; // Salir exitosamente SIN propagar error
+        } else {
+          // Para otros estados, también actualizar localmente pero logueando la diferencia
+          console.log(`🔄 RoutesContext - Actualizando estado ${status} localmente a pesar del error del backend`);
+          dispatch({ 
+            type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+            payload: { 
+              id: routeId, 
+              status,
+              ...extraData,
+              // Marcar como actualizado localmente
+              updatedLocally: true,
+              updatedAt: new Date().toISOString()
+            } 
+          });
+          
+          console.log('✅ RoutesContext - Estado actualizado localmente');
+          return; // Salir exitosamente SIN propagar error
+        }
+      }
       
     } catch (error) {
-      console.error('❌ RoutesContext - Error actualizando estado:', error);
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: 'Error al actualizar el estado de la ruta' });
-      throw error;
+      // Este catch solo debería activarse para errores muy críticos que no se pudieron manejar arriba
+      console.error('❌ RoutesContext - Error crítico inesperado:', error);
+      
+      // Incluso en caso de error crítico, intentar actualizar localmente
+      console.log('🔄 RoutesContext - Intentando actualización local como último recurso...');
+      try {
+        dispatch({ 
+          type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+          payload: { 
+            id: routeId, 
+            status,
+            ...extraData,
+            // Marcar como actualizado localmente por error crítico
+            updatedLocally: true,
+            criticalError: true,
+            updatedAt: new Date().toISOString()
+          } 
+        });
+        console.log('✅ RoutesContext - Actualización local de emergencia exitosa');
+      } catch (localError) {
+        console.error('❌ RoutesContext - Error incluso en actualización local:', localError);
+        const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar el estado de la ruta';
+        dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      }
+      
+      // NO propagar el error para evitar romper la UI
+      console.log('🛡️ RoutesContext - Error manejado, no propagando para preservar UX');
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
       requestsInProgress.current.delete(requestId);

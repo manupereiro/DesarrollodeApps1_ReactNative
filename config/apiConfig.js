@@ -56,7 +56,7 @@ export const API_CONFIG = {
       return `http://${LOCAL_IP}:8080`;
     }
   })(),
-  TIMEOUT: 30000,
+  TIMEOUT: 15000, // Reducido a 15s para respuestas más rápidas
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'

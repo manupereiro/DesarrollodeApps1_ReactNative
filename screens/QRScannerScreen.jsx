@@ -68,11 +68,15 @@ const QRScannerScreen = () => {
                   validationResult.packageInfo
                 );
                 
-                // 2. ACTUALIZAR ESTADO DE RUTA A IN_PROGRESS
+                // 2. MARCAR RUTA COMO IN_PROGRESS SOLO LOCALMENTE (no tocar backend)
+                console.log('🔄 QRScanner - Marcando ruta como IN_PROGRESS solo localmente');
                 updateRouteStatus(
                   validationResult.packageInfo.routeId,
                   'IN_PROGRESS'
-                );
+                ).catch(error => {
+                  console.log('⚠️ QRScanner - Error actualizando estado local (ignorado):', error);
+                  // IN_PROGRESS es solo local, no debería fallar
+                });
                 
                 // 3. QUITAR ESTADOS DE LOADING
                 setScanned(false);

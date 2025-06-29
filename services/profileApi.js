@@ -50,7 +50,7 @@ const createProfileApiInstance = async () => {
 const requestsInProgress = new Map();
 
 // Función para hacer requests con retry inteligente y auto-recovery
-const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
+const makeProfileRequest = async (requestKey, requestFn, maxRetries = 2) => {
   // Evitar requests duplicados
   if (requestsInProgress.has(requestKey)) {
     console.log('🔄 profileApi - Request ya en progreso, evitando duplicado:', requestKey);
@@ -110,8 +110,8 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
             });
           }
           
-          // Solo limpiar tokens después de múltiples errores consecutivos
-          if (consecutiveAuthErrors >= 2) {
+          // Solo limpiar tokens después de MUCHOS errores consecutivos - MODO TOLERANTE
+          if (consecutiveAuthErrors >= 4) { // Cambiado de 2 a 4
             console.warn('🔑 profileApi - Múltiples errores de auth, limpiando tokens...');
             await TokenStorage.clearAllAuthData();
             throw new Error('Authentication failed - tokens cleared');
@@ -119,17 +119,18 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
           
           // Para el primer error 401/403, esperar un poco y reintentar
           if (attempt < maxRetries) {
-            console.log('🔑 profileApi - Esperando antes de reintentar...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const authDelayMs = 1000; // Solo 1s fijo
+            console.log(`🔑 profileApi - Esperando ${authDelayMs}ms antes de reintentar...`);
+            await new Promise(resolve => setTimeout(resolve, authDelayMs));
             continue;
           }
         }
         
-        // Manejar errores de red con backoff exponencial
+        // Manejar errores de red con backoff exponencial mejorado
         if (!status) {
           console.log('🌐 profileApi - Error de red, reintentando...');
           if (attempt < maxRetries) {
-            const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            const delayMs = 1500; // Solo 1.5s fijo
             console.log(`⏳ profileApi - Esperando ${delayMs}ms antes del siguiente intento...`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
             continue;
@@ -145,8 +146,8 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
         // Si es el último intento, salir
         if (attempt === maxRetries) break;
         
-        // Delay estándar para otros errores
-        const delayMs = 1000 * attempt;
+        // Delay exponencial mejorado para otros errores
+        const delayMs = 1000; // Solo 1s fijo
         console.log(`⏳ profileApi - Esperando ${delayMs}ms antes del siguiente intento...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }

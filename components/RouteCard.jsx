@@ -39,13 +39,17 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
     return isScannedInPkg || isScannedInContext;
   }) || false;
 
+  // NUEVA LÓGICA DE ESTADOS:
+  // - ASSIGNED: Estado inicial en backend y local
+  // - IN_PROGRESS: Solo existe localmente, nunca se envía al backend
+  // - COMPLETED: Se envía al backend como ASSIGNED → COMPLETED (saltando IN_PROGRESS)
   const getStatusColor = (status) => {
     switch (status) {
       case 'AVAILABLE':
         return COLORS.success;
       case 'ASSIGNED':
         return COLORS.primary;
-      case 'IN_PROGRESS':
+      case 'IN_PROGRESS': // Solo local
         return COLORS.warning;
       case 'COMPLETED':
         return COLORS.gray;
@@ -199,13 +203,24 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </TouchableOpacity>
           ) : (route.status === 'ASSIGNED') ? (
             <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.button, styles.qrButton]}
-                onPress={() => onNavigateToCode ? onNavigateToCode(route) : null}
-              >
-                <MaterialIcons name="qr-code-scanner" size={16} color={COLORS.textOnPrimary} />
-                <Text style={styles.buttonText}>Escanear QR</Text>
-              </TouchableOpacity>
+              {/* Verificar si ya tiene código de verificación o paquetes escaneados */}
+              {(route.verificationCode || route.confirmationCode || hasAnyScannedPackage) ? (
+                <TouchableOpacity
+                  style={[styles.button, styles.completeButton]}
+                  onPress={() => onComplete(route)}
+                >
+                  <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Completar Entrega</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.button, styles.qrButton]}
+                  onPress={() => onNavigateToCode ? onNavigateToCode(route) : null}
+                >
+                  <MaterialIcons name="qr-code-scanner" size={16} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Escanear QR</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => onCancel(route.id)}

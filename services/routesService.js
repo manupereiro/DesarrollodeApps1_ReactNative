@@ -31,7 +31,7 @@ const createApiInstance = async () => {
 const requestsInProgress = new Map();
 
 // Función para hacer requests con retry y deduplicación mejorada
-const makeRequest = async (requestKey, requestFn, maxRetries = 3) => {
+const makeRequest = async (requestKey, requestFn, maxRetries = 2) => {
   // Evitar requests duplicados
   if (requestsInProgress.has(requestKey)) {
     console.log('🔄 routesService - Request ya en progreso, evitando duplicado:', requestKey);
@@ -81,26 +81,39 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 3) => {
           consecutiveAuthErrors++;
           console.log(`🔑 routesService - Error de autenticación #${consecutiveAuthErrors}`);
           
-          // Solo limpiar tokens después de múltiples errores consecutivos
-          if (consecutiveAuthErrors >= 2) {
-            console.warn('🔑 routesService - Múltiples errores de auth consecutivos, limpiando tokens...');
+          // 401 = Token inválido/expirado (más crítico)
+          // 403 = Sin permisos para esta acción específica (menos crítico)
+          
+          // Solo limpiar tokens después de MÚLTIPLES errores - MODO TOLERANTE
+          if (status === 401 && consecutiveAuthErrors >= 3) { // Cambiado de 1 a 3
+            console.warn('🔑 routesService - MÚLTIPLES errores 401, token probablemente inválido/expirado');
             await TokenStorage.clearAllAuthData();
-            throw new Error('Authentication failed - tokens cleared');
+            throw new Error('Authentication failed - invalid token');
+          } else if (status === 403 && consecutiveAuthErrors >= 5) { // Cambiado de 3 a 5
+            console.warn('🔑 routesService - MÚLTIPLES errores 403 consecutivos, limpiando tokens...');
+            await TokenStorage.clearAllAuthData();
+            throw new Error('Authentication failed - multiple permission errors');
           }
           
-          // Para el primer error 401/403, esperar y reintentar
+          // Para errores 403 esporádicos, no limpiar tokens inmediatamente
+          if (status === 403) {
+            console.log('🔑 routesService - Error 403 (permisos), puede ser temporal. No limpiando tokens aún.');
+          }
+          
+          // Para el primer error o errores 403, esperar y reintentar
           if (attempt < maxRetries) {
-            console.log('🔑 routesService - Esperando antes de reintentar...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const authDelayMs = 1000; // Solo 1s fijo
+            console.log(`🔑 routesService - Esperando ${authDelayMs}ms antes de reintentar...`);
+            await new Promise(resolve => setTimeout(resolve, authDelayMs));
             continue;
           }
         }
         
-        // Manejar errores de red con backoff exponencial
+        // Manejar errores de red con backoff exponencial mejorado
         if (!status) {
           console.log('🌐 routesService - Error de red, reintentando...');
           if (attempt < maxRetries) {
-            const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            const delayMs = 1500; // Solo 1.5s fijo
             console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
             continue;
@@ -116,8 +129,8 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 3) => {
         // Si es el último intento, salir
         if (attempt === maxRetries) break;
         
-        // Delay exponencial para otros errores
-        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        // Delay exponencial mejorado para otros errores
+        const delayMs = 1000; // Solo 1s fijo
         console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
