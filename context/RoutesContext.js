@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import { routesService } from '../services/routesService';
+import TokenStorage from '../services/tokenStorage';
 import { useAuth } from './AuthContext';
 
 // Acciones
@@ -109,10 +110,31 @@ export const RoutesProvider = ({ children }) => {
     try {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
-      // Intentar cargar rutas pero ignorar errores 403/401
+      // Verificar que tenemos un token válido antes de intentar cargar rutas
+      const tokenInfo = await TokenStorage.getTokenInfo();
+      if (!tokenInfo || !tokenInfo.hasToken) {
+        console.warn('⚠️ RoutesContext: No hay token válido, omitiendo carga de rutas');
+        dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: [] });
+        dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: [] });
+        return;
+      }
+      
+      if (tokenInfo.isExpired) {
+        console.warn('⚠️ RoutesContext: Token expirado, limpiando datos...');
+        await TokenStorage.clearAllAuthData();
+        dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: [] });
+        dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: [] });
+        return;
+      }
+      
+      console.log('🔍 RoutesContext: Token válido, cargando rutas...');
+      
+      // Intentar cargar rutas pero manejar errores graciosamente
       let availableRoutes = [];
       let myRoutes = [];
+      let authErrorCount = 0;
       
+      // Cargar rutas disponibles
       try {
         availableRoutes = await routesService.getAvailableRoutes();
         console.log('🔍 RoutesContext - Rutas disponibles recibidas:', availableRoutes?.length || 0);
@@ -125,29 +147,61 @@ export const RoutesProvider = ({ children }) => {
           });
         }
       } catch (error) {
-        console.warn('⚠️ Error cargando rutas disponibles (ignorando):', error.message);
-        if (error.response?.status === 403 || error.response?.status === 401) {
-          console.log('🔄 Ignorando error 403/401 en availableRoutes');
+        const status = error.response?.status;
+        console.warn('⚠️ RoutesContext: Error cargando rutas disponibles:', {
+          message: error.message,
+          status,
+          isAuthError: status === 401 || status === 403
+        });
+        
+        if (status === 403 || status === 401) {
+          authErrorCount++;
+          console.log('🔄 RoutesContext: Ignorando error de autenticación en availableRoutes');
         }
       }
       
+      // Cargar mis rutas
       try {
         myRoutes = await routesService.getMyRoutes();
+        console.log('🔍 RoutesContext - Mis rutas recibidas:', myRoutes?.length || 0);
       } catch (error) {
-        console.warn('⚠️ Error cargando mis rutas (ignorando):', error.message);
-        if (error.response?.status === 403 || error.response?.status === 401) {
-          console.log('🔄 Ignorando error 403/401 en myRoutes');
+        const status = error.response?.status;
+        console.warn('⚠️ RoutesContext: Error cargando mis rutas:', {
+          message: error.message,
+          status,
+          isAuthError: status === 401 || status === 403
+        });
+        
+        if (status === 403 || status === 401) {
+          authErrorCount++;
+          console.log('🔄 RoutesContext: Ignorando error de autenticación en myRoutes');
         }
       }
-
-      dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: availableRoutes });
-      dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: myRoutes });
-    } catch (error) {
-      console.error('❌ Error en loadRoutes:', error);
-      // Solo mostrar error si no es 403/401
-      if (error.response?.status !== 403 && error.response?.status !== 401) {
-        dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
+      
+      // Si tenemos múltiples errores de autenticación, limpiar tokens
+      if (authErrorCount >= 2) {
+        console.warn('🔑 RoutesContext: Múltiples errores de autenticación, limpiando tokens...');
+        await TokenStorage.clearAllAuthData();
+        availableRoutes = [];
+        myRoutes = [];
       }
+
+      dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: availableRoutes || [] });
+      dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: myRoutes || [] });
+      
+      console.log('✅ RoutesContext: Rutas cargadas exitosamente:', {
+        availableCount: availableRoutes?.length || 0,
+        myRoutesCount: myRoutes?.length || 0,
+        authErrors: authErrorCount
+      });
+      
+    } catch (error) {
+      console.error('❌ RoutesContext: Error general cargando rutas:', error);
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
+      
+      // Asegurar que tenemos arrays vacíos en lugar de null/undefined
+      dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: [] });
+      dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: [] });
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
       requestsInProgress.current.delete(requestId);

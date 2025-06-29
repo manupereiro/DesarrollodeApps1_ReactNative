@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getApiConfig } from '../config/apiConfig';
 import TokenStorage from './tokenStorage';
 
-// Crear instancia mejorada con validación de token
+// Crear instancia mejorada con validación de token y headers consistentes
 const createProfileApiInstance = async () => {
   const config = getApiConfig();
   
@@ -21,17 +21,27 @@ const createProfileApiInstance = async () => {
   }
   
   if (tokenInfo.expiresSoon) {
-    console.warn('⚠️ profileApi - Token expira pronto (', tokenInfo.expiresInMinutes, 'minutos)');
+    console.warn(`⚠️ profileApi - Token expira pronto (${tokenInfo.expiresInMinutes} minutos)`);
   }
   
   const token = await TokenStorage.getToken();
   
+  // Asegurar headers consistentes
+  const headers = {
+    ...config.headers,
+    Authorization: `Bearer ${token}`,
+  };
+  
+  console.log('🔐 profileApi - Headers configurados:', {
+    'Content-Type': headers['Content-Type'],
+    'Accept': headers['Accept'],
+    'Authorization': `Bearer ${token.substring(0, 20)}...`,
+    tokenLength: token.length
+  });
+  
   return axios.create({
     ...config,
-    headers: {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     timeout: 15000, // 15 segundos timeout
   });
 };
@@ -76,13 +86,29 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
           message: error.message,
           status,
           isNetworkError: !status,
-          isAuthError: status === 401 || status === 403
+          isAuthError: status === 401 || status === 403,
+          url: error.config?.url
         });
         
         // Manejar errores de autenticación con contador
         if (status === 401 || status === 403) {
           consecutiveAuthErrors++;
           console.log(`🔑 profileApi - Error de autenticación #${consecutiveAuthErrors}`);
+          
+          // Logging adicional para debug del error 403
+          if (status === 403) {
+            console.log('🔍 profileApi - Detalles del error 403:', {
+              url: error.config?.url,
+              method: error.config?.method,
+              headers: {
+                'Content-Type': error.config?.headers?.['Content-Type'],
+                'Accept': error.config?.headers?.['Accept'],
+                'Authorization': error.config?.headers?.['Authorization'] ? 
+                  `Bearer ${error.config.headers.Authorization.substring(7, 27)}...` : 'No present'
+              },
+              responseData: error.response?.data
+            });
+          }
           
           // Solo limpiar tokens después de múltiples errores consecutivos
           if (consecutiveAuthErrors >= 2) {

@@ -23,31 +23,53 @@ const webStorage = {
 // Use the appropriate storage implementation
 const storage = isWeb ? webStorage : SecureStore;
 
-// Token validation helpers
+// Token validation helpers mejorada
 const isTokenValid = (token) => {
-  if (!token || typeof token !== 'string') return false;
+  if (!token || typeof token !== 'string') {
+    console.warn('⚠️ TokenStorage: Token inválido - no es string o está vacío');
+    return false;
+  }
   
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) return false;
+    if (parts.length !== 3) {
+      console.warn('⚠️ TokenStorage: Token inválido - no tiene 3 partes (JWT)');
+      return false;
+    }
+    
+    // Verificar que cada parte no esté vacía
+    if (!parts[0] || !parts[1] || !parts[2]) {
+      console.warn('⚠️ TokenStorage: Token inválido - alguna parte está vacía');
+      return false;
+    }
     
     const payload = JSON.parse(atob(parts[1]));
     const now = Math.floor(Date.now() / 1000);
     
-    // Token válido si no ha expirado o expira en más de 5 minutos
-    if (payload.exp && payload.exp > (now + 300)) {
+    // Logging del payload para debug
+    console.log('🔍 TokenStorage: Payload del token:', {
+      iat: payload.iat ? new Date(payload.iat * 1000).toLocaleString() : 'No present',
+      exp: payload.exp ? new Date(payload.exp * 1000).toLocaleString() : 'No present',
+      sub: payload.sub ? payload.sub.substring(0, 10) + '...' : 'No present',
+      timeUntilExpiry: payload.exp ? Math.floor((payload.exp - now) / 60) + ' minutos' : 'No expiry'
+    });
+    
+    // Token válido si no ha expirado o expira en más de 1 minuto (reducido de 5)
+    if (payload.exp && payload.exp > (now + 60)) {
+      console.log('✅ TokenStorage: Token válido (expira en más de 1 minuto)');
       return true;
     }
     
     if (payload.exp && payload.exp > now) {
-      console.warn('⚠️ Token expira pronto:', Math.floor((payload.exp - now) / 60), 'minutos');
+      const minutesLeft = Math.floor((payload.exp - now) / 60);
+      console.warn(`⚠️ TokenStorage: Token expira pronto: ${minutesLeft} minutos`);
       return true; // Aún válido pero expira pronto
     }
     
-    console.warn('⚠️ Token expirado');
+    console.warn('⚠️ TokenStorage: Token expirado');
     return false;
   } catch (error) {
-    console.error('❌ Error validando token:', error);
+    console.error('❌ TokenStorage: Error validando token:', error);
     return false;
   }
 };
@@ -66,7 +88,7 @@ export const saveToken = async (token) => {
     console.log('🔐 TokenStorage: Guardando token...', {
       tokenLength: token?.length,
       tokenType: typeof token,
-      tokenPreview: token ? `${token.substring(0, 10)}...` : null,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : null,
       isValid: isTokenValid(token)
     });
     
@@ -91,6 +113,8 @@ export const saveToken = async (token) => {
         length: savedToken?.length,
         expiresAt: expiration?.toLocaleString()
       });
+    } else {
+      console.error('❌ TokenStorage: El token guardado no coincide');
     }
     
     return success;
@@ -132,7 +156,7 @@ export const getToken = async () => {
     console.log('🔍 TokenStorage: Token válido obtenido:', {
       exists: true,
       length: token.length,
-      preview: `${token.substring(0, 10)}...`,
+      preview: `${token.substring(0, 20)}...`,
       expiresAt: expiration?.toLocaleString()
     });
 
@@ -255,17 +279,20 @@ const TokenStorage = {
     }
   },
   
-  // Obtener información del token
+  // Obtener información del token mejorada
   getTokenInfo: async () => {
     try {
       const token = await getToken();
-      if (!token) return null;
+      if (!token) {
+        console.log('🔍 TokenStorage: getTokenInfo - No hay token');
+        return null;
+      }
       
       const expiration = getTokenExpirationTime(token);
       const now = new Date();
       const timeUntilExpiry = expiration ? expiration.getTime() - now.getTime() : 0;
       
-      return {
+      const tokenInfo = {
         hasToken: true,
         expiresAt: expiration,
         expiresIn: Math.max(0, Math.floor(timeUntilExpiry / 1000)),
@@ -273,7 +300,11 @@ const TokenStorage = {
         isExpired: timeUntilExpiry <= 0,
         expiresSoon: timeUntilExpiry <= (5 * 60 * 1000) // Expira en menos de 5 minutos
       };
-    } catch {
+      
+      console.log('🔍 TokenStorage: getTokenInfo result:', tokenInfo);
+      return tokenInfo;
+    } catch (error) {
+      console.error('❌ TokenStorage: Error en getTokenInfo:', error);
       return { hasToken: false, isExpired: true };
     }
   },
