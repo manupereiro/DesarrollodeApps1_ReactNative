@@ -101,7 +101,6 @@ export const RoutesProvider = ({ children }) => {
     
     // Evitar requests duplicados
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 LoadRoutes ya en progreso, evitando duplicado');
       return;
     }
     
@@ -113,21 +112,18 @@ export const RoutesProvider = ({ children }) => {
       // Verificar que tenemos un token válido antes de intentar cargar rutas
       const tokenInfo = await TokenStorage.getTokenInfo();
       if (!tokenInfo || !tokenInfo.hasToken) {
-        console.warn('⚠️ RoutesContext: No hay token válido, omitiendo carga de rutas');
         dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: [] });
         dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: [] });
         return;
       }
       
       if (tokenInfo.isExpired) {
-        console.warn('⚠️ RoutesContext: Token expirado, limpiando datos...');
         await TokenStorage.clearAllAuthData();
         dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: [] });
         dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: [] });
         return;
       }
       
-      console.log('🔍 RoutesContext: Token válido, cargando rutas...');
       
       // Intentar cargar rutas pero manejar errores graciosamente
       let availableRoutes = [];
@@ -148,39 +144,25 @@ export const RoutesProvider = ({ children }) => {
         }
       } catch (error) {
         const status = error.response?.status;
-        console.warn('⚠️ RoutesContext: Error cargando rutas disponibles:', {
-          message: error.message,
-          status,
-          isAuthError: status === 401 || status === 403
-        });
         
         if (status === 403 || status === 401) {
           authErrorCount++;
-          console.log('🔄 RoutesContext: Ignorando error de autenticación en availableRoutes');
         }
       }
       
       // Cargar mis rutas
       try {
         myRoutes = await routesService.getMyRoutes();
-        console.log('🔍 RoutesContext - Mis rutas recibidas:', myRoutes?.length || 0);
       } catch (error) {
         const status = error.response?.status;
-        console.warn('⚠️ RoutesContext: Error cargando mis rutas:', {
-          message: error.message,
-          status,
-          isAuthError: status === 401 || status === 403
-        });
         
         if (status === 403 || status === 401) {
           authErrorCount++;
-          console.log('🔄 RoutesContext: Ignorando error de autenticación en myRoutes');
         }
       }
       
       // Si tenemos múltiples errores de autenticación, limpiar tokens
       if (authErrorCount >= 2) {
-        console.warn('🔑 RoutesContext: Múltiples errores de autenticación, limpiando tokens...');
         await TokenStorage.clearAllAuthData();
         availableRoutes = [];
         myRoutes = [];
@@ -189,11 +171,6 @@ export const RoutesProvider = ({ children }) => {
       dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: availableRoutes || [] });
       dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: myRoutes || [] });
       
-      console.log('✅ RoutesContext: Rutas cargadas exitosamente:', {
-        availableCount: availableRoutes?.length || 0,
-        myRoutesCount: myRoutes?.length || 0,
-        authErrors: authErrorCount
-      });
       
     } catch (error) {
       console.error('❌ RoutesContext: Error general cargando rutas:', error);
@@ -213,7 +190,6 @@ export const RoutesProvider = ({ children }) => {
     const requestId = `selectRoute-${routeId}`;
     
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 SelectRoute ya en progreso para:', routeId);
       return;
     }
     
@@ -232,7 +208,6 @@ export const RoutesProvider = ({ children }) => {
       
       // Si es error 403/401, no mostrarlo como error crítico
       if (error.response?.status === 403 || error.response?.status === 401) {
-        console.log('🔄 RoutesContext - Error 403/401 en selectRoute, pero la operación puede haber funcionado');
         // Recargar de todas formas
         setTimeout(() => debouncedLoadRoutes(), 500);
         return; // No lanzar error
@@ -252,14 +227,12 @@ export const RoutesProvider = ({ children }) => {
     const requestId = `cancelRoute-${routeId}`;
     
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 CancelRoute ya en progreso para:', routeId);
       return;
     }
     
     requestsInProgress.current.add(requestId);
     
     try {
-      console.log('🔄 RoutesContext - Cancelando ruta:', routeId);
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
       // Validar que tenemos el routeId
@@ -268,7 +241,6 @@ export const RoutesProvider = ({ children }) => {
       }
       
       const cancelledRoute = await routesService.cancelRoute(routeId);
-      console.log('✅ RoutesContext - Ruta cancelada exitosamente');
       
       // Recargar rutas después de un delay - pero ignorar errores
       setTimeout(() => {
@@ -302,14 +274,12 @@ export const RoutesProvider = ({ children }) => {
     const requestId = `updateRouteStatus-${routeId}-${status}`;
     
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 UpdateRouteStatus ya en progreso para:', routeId, status);
       return;
     }
     
     requestsInProgress.current.add(requestId);
     
     try {
-      console.log('🔄 RoutesContext - Actualizando estado de ruta:', { routeId, status });
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
       // Simular delay de red
@@ -320,8 +290,6 @@ export const RoutesProvider = ({ children }) => {
         type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
         payload: { id: routeId, status } 
       });
-      
-      console.log('✅ RoutesContext - Estado de ruta actualizado exitosamente');
       
       // Recargar rutas después de un breve delay para sincronizar
       setTimeout(() => {

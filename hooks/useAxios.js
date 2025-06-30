@@ -50,7 +50,6 @@ export const useAxios = () => {
     
     // Evitar requests duplicados concurrentes
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 Request ya en progreso, evitando duplicado:', requestId);
       return;
     }
     
@@ -62,8 +61,6 @@ export const useAxios = () => {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔄 Intento ${attempt}/${maxRetries} para:`, config.url);
-        
         const axiosInstance = await createAxiosInstance();
         const response = await axiosInstance(config);
         
@@ -90,7 +87,6 @@ export const useAxios = () => {
         
         // Delay exponencial para reintentos
         const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`⏳ Esperando ${delayMs}ms antes del siguiente intento...`);
         await delay(delayMs);
       }
     }

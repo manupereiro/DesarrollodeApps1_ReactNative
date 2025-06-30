@@ -78,7 +78,6 @@ export const packagesService = {
       const packageData = MOCK_PACKAGES[qrCode];
       
       if (packageData) {
-        console.log('✅ packagesService - QR válido encontrado:', packageData);
         return {
           isValid: true,
           packageInfo: packageData,
@@ -112,7 +111,6 @@ export const packagesService = {
       const packageData = Object.values(MOCK_PACKAGES).find(pkg => pkg.id === packageId);
       
       if (packageData) {
-        console.log('✅ packagesService - Paquete encontrado:', packageData);
         return packageData;
       } else {
         throw new Error('Paquete no encontrado');
@@ -127,13 +125,11 @@ export const packagesService = {
 
   // Obtener información de un paquete por QR
   getPackageByQR: async (qrCode) => {
-    console.log('📦 packagesService - Obteniendo paquete por QR:', qrCode);
     
     try {
       const packageData = MOCK_PACKAGES[qrCode];
       
       if (packageData) {
-        console.log('✅ packagesService - Paquete encontrado por QR:', packageData);
         return packageData;
       } else {
         throw new Error('Paquete no encontrado');
@@ -163,8 +159,6 @@ export const packagesService = {
       
       // Validar código de confirmación
       if (packageData.confirmationCode === confirmationCode) {
-        console.log('✅ packagesService - Entrega confirmada exitosamente');
-        
         // Actualizar estado del paquete
         packageData.status = 'COMPLETED';
         packageData.deliveredAt = new Date().toISOString();

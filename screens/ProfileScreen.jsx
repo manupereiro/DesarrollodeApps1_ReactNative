@@ -145,33 +145,6 @@ const ProfileScreen = ({ navigation }) => {
     }
   }, [error, retryCount]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🔄 ProfileScreen - Cerrando sesión...');
-              await logout();
-              console.log('✅ ProfileScreen - Sesión cerrada exitosamente');
-            } catch (error) {
-              console.error('❌ ProfileScreen - Error cerrando sesión:', error);
-              // Continuar con el logout aunque falle
-            }
-          },
-        },
-      ],
-    );
-  };
-
   const handleRoutePress = (route) => {
     navigation.navigate('RouteDetails', { routeData: route });
   };
@@ -292,13 +265,6 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Botón de cerrar sesión */}
-        <View style={styles.logoutContainer}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <MaterialIcons name="logout" size={20} color={COLORS.textOnPrimary} />
-            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -477,4 +443,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileScreen; 
+export default ProfileScreen;

@@ -85,7 +85,6 @@ export const AuthProvider = ({ children }) => {
       const { token, userData } = await TokenStorage.getAuthData();
       
       if (token) {
-        console.log('✅ Token encontrado, restaurando sesión...');
         
         await new Promise(resolve => setTimeout(resolve, 100));
         
@@ -105,7 +104,6 @@ export const AuthProvider = ({ children }) => {
           console.error('⚠️ Error restaurando Long Polling:', error);
         }
       } else {
-        console.log('❌ No se encontró token');
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       }
     } catch (error) {
@@ -120,13 +118,13 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Usuario y contraseña son requeridos');
       }
       
-      console.log('🔐 Iniciando login para:', credentials.username);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       
       const response = await authApi.login(credentials);
-      
-      console.log('✅ Login exitoso');
       await TokenStorage.setAuthData(response.token, response.user || null);
+      
+      // Verificar que el token se guardó correctamente
+      const { token: savedToken, userData: savedUserData } = await TokenStorage.getAuthData();
       
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -168,11 +166,6 @@ export const AuthProvider = ({ children }) => {
       
       await TokenStorage.clearAll();
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
-      
-      console.log('✅ Sesión cerrada');
-    } catch (error) {
-      console.error('❌ Error en logout:', error);
-      throw error;
     }
   };
 
