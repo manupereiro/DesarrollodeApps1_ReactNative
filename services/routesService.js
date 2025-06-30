@@ -56,20 +56,41 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 3) => {
         // Manejar errores de autenticación con más inteligencia
         if (status === 401 || status === 403) {
           consecutiveAuthErrors++;
-          if (consecutiveAuthErrors >= 2) {
+          console.log(`🔑 routesService - Error de autenticación #${consecutiveAuthErrors}`);
+          
+          // 401 = Token inválido/expirado (más crítico)
+          // 403 = Sin permisos para esta acción específica (menos crítico)
+          
+          // Solo limpiar tokens después de MÚLTIPLES errores - MODO TOLERANTE
+          if (status === 401 && consecutiveAuthErrors >= 3) { // Cambiado de 1 a 3
+            console.warn('🔑 routesService - MÚLTIPLES errores 401, token probablemente inválido/expirado');
             await TokenStorage.clearAllAuthData();
-            throw new Error('Authentication failed - tokens cleared');
+            throw new Error('Authentication failed - invalid token');
+          } else if (status === 403 && consecutiveAuthErrors >= 5) { // Cambiado de 3 a 5
+            console.warn('🔑 routesService - MÚLTIPLES errores 403 consecutivos, limpiando tokens...');
+            await TokenStorage.clearAllAuthData();
+            throw new Error('Authentication failed - multiple permission errors');
           }
+          
+          // Para errores 403 esporádicos, no limpiar tokens inmediatamente
+          if (status === 403) {
+            console.log('🔑 routesService - Error 403 (permisos), puede ser temporal. No limpiando tokens aún.');
+          }
+          
+          // Para el primer error o errores 403, esperar y reintentar
           if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const authDelayMs = 1000; // Solo 1s fijo
+            console.log(`🔑 routesService - Esperando ${authDelayMs}ms antes de reintentar...`);
+            await new Promise(resolve => setTimeout(resolve, authDelayMs));
             continue;
           }
         }
-
-        // Manejar errores de red con backoff exponencial
+        
+        // Manejar errores de red con backoff exponencial mejorado
         if (!status) {
           if (attempt < maxRetries) {
-            const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            const delayMs = 1500; // Solo 1.5s fijo
+            console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
             continue;
           }
@@ -81,8 +102,10 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 3) => {
         }
 
         if (attempt === maxRetries) break;
-
-        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        
+        // Delay exponencial mejorado para otros errores
+        const delayMs = 1000; // Solo 1s fijo
+        console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }

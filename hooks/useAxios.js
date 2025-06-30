@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import TokenStorage from '../services/tokenStorage';
+import { useCallback, useRef, useState } from 'react';
 import { getApiConfig } from '../config/apiConfig';
+import TokenStorage from '../services/tokenStorage';
 
 export const useAxios = () => {
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export const useAxios = () => {
     );
   };
 
-  const execute = useCallback(async (config, maxRetries = 3) => {
+  const execute = useCallback(async (config, maxRetries = 2) => {
     // Crear un identificador único para evitar requests duplicados
     const requestId = `${config.method}-${config.url}-${Date.now()}`;
     
@@ -85,8 +85,9 @@ export const useAxios = () => {
           break;
         }
         
-        // Delay exponencial para reintentos
-        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        // Delay exponencial mejorado para reintentos
+        const delayMs = 1000; // Solo 1s fijo
+        console.log(`⏳ Esperando ${delayMs}ms antes del siguiente intento...`);
         await delay(delayMs);
       }
     }

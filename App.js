@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
-import Constants from 'expo-constants';
+import React, { useEffect, useRef } from 'react';
 
 import { AuthProvider } from './context/AuthContext';
 import { RoutesProvider } from './context/RoutesContext';
 import AppNavigator from './navigation/AppNavigator';
+
+import { registerForPushNotificationsAsync } from './services/pushNotifications';
+import * as userApi from './services/userApi';
 
 export default function App() {
   useEffect(() => {

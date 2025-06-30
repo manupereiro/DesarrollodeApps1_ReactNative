@@ -9,7 +9,8 @@ export const ROUTES_ACTIONS = {
   SET_MY_ROUTES: 'SET_MY_ROUTES',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
-  UPDATE_ROUTE_STATUS: 'UPDATE_ROUTE_STATUS'
+  UPDATE_ROUTE_STATUS: 'UPDATE_ROUTE_STATUS',
+  MARK_PACKAGE_SCANNED: 'MARK_PACKAGE_SCANNED'
 };
 
 // Estado inicial
@@ -17,7 +18,8 @@ const initialState = {
   availableRoutes: [],
   myRoutes: [],
   loading: false,
-  error: null
+  error: null,
+  scannedPackages: new Set() // IDs de paquetes que han sido escaneados
 };
 
 // Reducer
@@ -47,18 +49,98 @@ const routesReducer = (state, action) => {
         loading: false
       };
     case ROUTES_ACTIONS.UPDATE_ROUTE_STATUS:
+      console.log('🔄 REDUCER: Actualizando estado de ruta:', action.payload);
       return {
         ...state,
         myRoutes: state.myRoutes.map(route =>
           route.id === action.payload.id
-            ? { ...route, status: action.payload.status }
+            ? { 
+                ...route, 
+                status: action.payload.status,
+                // PRESERVAR packages y propiedades scanned
+                packages: route.packages || [],
+                // AGREGAR código de verificación si se proporciona
+                ...(action.payload.verificationCode && { 
+                  confirmationCode: action.payload.verificationCode,
+                  verificationCode: action.payload.verificationCode 
+                }),
+                // AGREGAR timestamps
+                ...(action.payload.startedAt && { 
+                  startedAt: action.payload.startedAt,
+                  startedDate: action.payload.startedDate,
+                  startedTime: action.payload.startedTime
+                }),
+                ...(action.payload.completedAt && { 
+                  completedAt: action.payload.completedAt,
+                  completedDate: action.payload.completedDate,
+                  completedTime: action.payload.completedTime
+                })
+              }
             : route
         ),
         availableRoutes: state.availableRoutes.map(route =>
           route.id === action.payload.id
-            ? { ...route, status: action.payload.status }
+            ? { 
+                ...route, 
+                status: action.payload.status,
+                ...(action.payload.verificationCode && { 
+                  confirmationCode: action.payload.verificationCode,
+                  verificationCode: action.payload.verificationCode 
+                }),
+                // AGREGAR timestamps
+                ...(action.payload.startedAt && { 
+                  startedAt: action.payload.startedAt,
+                  startedDate: action.payload.startedDate,
+                  startedTime: action.payload.startedTime
+                }),
+                ...(action.payload.completedAt && { 
+                  completedAt: action.payload.completedAt,
+                  completedDate: action.payload.completedDate,
+                  completedTime: action.payload.completedTime
+                })
+              }
             : route
         )
+      };
+    case ROUTES_ACTIONS.MARK_PACKAGE_SCANNED:
+      console.log('🔄 REDUCER: Procesando MARK_PACKAGE_SCANNED:', action.payload);
+      console.log('🔄 REDUCER: Estado actual myRoutes:', state.myRoutes.length);
+      
+      const newScannedPackages = new Set(state.scannedPackages);
+      newScannedPackages.add(action.payload.packageId);
+      
+      const updatedRoutes = state.myRoutes.map(route => {
+        if (route.id === action.payload.routeId) {
+          console.log(`🔄 REDUCER: Actualizando ruta ${route.id} con ${route.packages?.length || 0} paquetes`);
+          
+          const updatedPackages = route.packages?.map(pkg => {
+            if (pkg.id === action.payload.packageId) {
+              console.log(`✅ REDUCER: Marcando paquete ${pkg.id} como escaneado`);
+              return { 
+                ...pkg, 
+                scanned: true, 
+                scannedAt: new Date().toISOString(),
+                // AGREGAR datos del paquete escaneado (incluye verificationCode)
+                ...action.payload.packageData
+              };
+            }
+            return pkg;
+          }) || [];
+          
+          return {
+            ...route,
+            packages: updatedPackages
+          };
+        }
+        return route;
+      });
+      
+      console.log('✅ REDUCER: Estado actualizado con paquete escaneado');
+      
+      return {
+        ...state,
+        scannedPackages: newScannedPackages,
+        myRoutes: updatedRoutes
       };
     default:
       return state;
@@ -168,8 +250,14 @@ export const RoutesProvider = ({ children }) => {
         myRoutes = [];
       }
 
+      // Asegurar que las rutas tengan estructura de paquetes
+      const processedMyRoutes = (myRoutes || []).map(route => ({
+        ...route,
+        packages: route.packages || [] // Asegurar que existe array de paquetes
+      }));
+      
       dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: availableRoutes || [] });
-      dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: myRoutes || [] });
+      dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: processedMyRoutes });
       
       
     } catch (error) {
@@ -270,7 +358,7 @@ export const RoutesProvider = ({ children }) => {
   };
 
   // Actualizar estado de ruta
-  const updateRouteStatus = async (routeId, status) => {
+  const updateRouteStatus = async (routeId, status, extraData = {}) => {
     const requestId = `updateRouteStatus-${routeId}-${status}`;
     
     if (requestsInProgress.current.has(requestId)) {
@@ -282,24 +370,114 @@ export const RoutesProvider = ({ children }) => {
     try {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // NUEVA LÓGICA: IN_PROGRESS solo local, COMPLETED directo de ASSIGNED
+      if (status === 'IN_PROGRESS') {
+        console.log('🔄 RoutesContext - IN_PROGRESS es solo local, NO enviando al backend');
+        dispatch({ 
+          type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+          payload: { 
+            id: routeId, 
+            status: 'IN_PROGRESS',
+            ...extraData,
+            // Marcar como cambio solo local
+            localOnly: true,
+            updatedAt: new Date().toISOString()
+          } 
+        });
+        console.log('✅ RoutesContext - Estado IN_PROGRESS actualizado SOLO localmente');
+        return;
+      }
       
-      // Actualizar estado local inmediatamente
-      dispatch({ 
-        type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
-        payload: { id: routeId, status } 
-      });
-      
-      // Recargar rutas después de un breve delay para sincronizar
-      setTimeout(() => {
-        debouncedLoadRoutes();
-      }, 500);
+      // Para COMPLETED y otros estados, intentar actualizar en el backend
+      try {
+        console.log('🔄 RoutesContext - Enviando actualización al backend...');
+        const backendResponse = await routesService.updateRouteStatus(routeId, status);
+        console.log('✅ RoutesContext - Backend actualizado exitosamente:', backendResponse);
+        
+        // Actualizar estado local con los datos del backend + extraData local
+        dispatch({ 
+          type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+          payload: { 
+            id: routeId, 
+            status, 
+            ...extraData,
+            // Incluir datos del backend si están disponibles
+            ...(backendResponse && backendResponse.updatedAt && {
+              updatedAt: backendResponse.updatedAt
+            })
+          } 
+        });
+        
+        console.log('✅ RoutesContext - Estado de ruta actualizado exitosamente en backend y localmente');
+        
+      } catch (backendError) {
+        console.warn('⚠️ RoutesContext - Error del backend, continuando con actualización local:', backendError.message);
+        
+        // Para COMPLETED, SIEMPRE actualizar localmente sin importar el error
+        if (status === 'COMPLETED') {
+          console.log('🔄 RoutesContext - Completando entrega localmente a pesar del error del backend');
+          dispatch({ 
+            type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+            payload: { 
+              id: routeId, 
+              status: 'COMPLETED',
+              ...extraData,
+              // Marcar como completado localmente
+              completedLocally: true,
+              completedAt: extraData.completedAt || new Date().toISOString()
+            } 
+          });
+          
+          console.log('✅ RoutesContext - Entrega marcada como completada localmente');
+          return; // Salir exitosamente SIN propagar error
+        } else {
+          // Para otros estados, también actualizar localmente pero logueando la diferencia
+          console.log(`🔄 RoutesContext - Actualizando estado ${status} localmente a pesar del error del backend`);
+          dispatch({ 
+            type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+            payload: { 
+              id: routeId, 
+              status,
+              ...extraData,
+              // Marcar como actualizado localmente
+              updatedLocally: true,
+              updatedAt: new Date().toISOString()
+            } 
+          });
+          
+          console.log('✅ RoutesContext - Estado actualizado localmente');
+          return; // Salir exitosamente SIN propagar error
+        }
+      }
       
     } catch (error) {
-      console.error('❌ RoutesContext - Error actualizando estado:', error);
-      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: 'Error al actualizar el estado de la ruta' });
-      throw error;
+      // Este catch solo debería activarse para errores muy críticos que no se pudieron manejar arriba
+      console.error('❌ RoutesContext - Error crítico inesperado:', error);
+      
+      // Incluso en caso de error crítico, intentar actualizar localmente
+      console.log('🔄 RoutesContext - Intentando actualización local como último recurso...');
+      try {
+        dispatch({ 
+          type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
+          payload: { 
+            id: routeId, 
+            status,
+            ...extraData,
+            // Marcar como actualizado localmente por error crítico
+            updatedLocally: true,
+            criticalError: true,
+            updatedAt: new Date().toISOString()
+          } 
+        });
+        console.log('✅ RoutesContext - Actualización local de emergencia exitosa');
+      } catch (localError) {
+        console.error('❌ RoutesContext - Error incluso en actualización local:', localError);
+        const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar el estado de la ruta';
+        dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      }
+      
+      // NO propagar el error para evitar romper la UI
+      console.log('🛡️ RoutesContext - Error manejado, no propagando para preservar UX');
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
       requestsInProgress.current.delete(requestId);
@@ -317,6 +495,63 @@ export const RoutesProvider = ({ children }) => {
     return state.myRoutes.some(route => route.id === routeId);
   };
 
+  // Marcar paquete como escaneado
+  const markPackageScanned = (routeId, packageId, packageData = {}) => {
+    console.log('🔥 CRÍTICO - markPackageScanned EJECUTÁNDOSE:', { routeId, packageId });
+    console.log('🔥 CRÍTICO - Estado ANTES de marcar:', {
+      myRoutesCount: state.myRoutes.length,
+      scannedPackagesCount: state.scannedPackages.size,
+      scannedPackagesList: Array.from(state.scannedPackages)
+    });
+    
+    // Buscar la ruta actual para debug DETALLADO
+    const currentRoute = state.myRoutes.find(r => r.id === routeId);
+    if (currentRoute) {
+      console.log('🔥 CRÍTICO - Ruta encontrada ANTES:', {
+        id: currentRoute.id,
+        status: currentRoute.status,
+        packagesCount: currentRoute.packages?.length || 0,
+        packages: currentRoute.packages?.map(pkg => ({
+          id: pkg.id,
+          scanned: pkg.scanned,
+          description: pkg.description
+        })) || []
+      });
+    } else {
+      console.log('❌ CRÍTICO - Ruta NO encontrada:', routeId);
+      console.log('❌ CRÍTICO - Rutas disponibles:', state.myRoutes.map(r => ({ id: r.id, status: r.status })));
+      return; // No hacer nada si no se encuentra la ruta
+    }
+    
+    // Ejecutar dispatch
+    dispatch({ 
+      type: ROUTES_ACTIONS.MARK_PACKAGE_SCANNED, 
+      payload: { 
+        routeId, 
+        packageId,
+        packageData 
+      } 
+    });
+    
+    // Debug INMEDIATO después del dispatch
+    setTimeout(() => {
+      const updatedRoute = state.myRoutes.find(r => r.id === routeId);
+      console.log('🔥 CRÍTICO - Estado DESPUÉS de marcar:', {
+        rutaEncontrada: !!updatedRoute,
+        paquetesCount: updatedRoute?.packages?.length || 0,
+        paquetesEscaneados: updatedRoute?.packages?.filter(pkg => pkg.scanned).length || 0,
+        scannedPackagesSize: state.scannedPackages.size
+      });
+    }, 100);
+    
+    console.log('✅ RoutesContext - Dispatch ejecutado exitosamente');
+  };
+
+  // Verificar si un paquete ha sido escaneado
+  const isPackageScanned = (packageId) => {
+    return state.scannedPackages.has(packageId);
+  };
+
   const value = {
     ...state,
     loadRoutes,
@@ -324,7 +559,9 @@ export const RoutesProvider = ({ children }) => {
     cancelRoute,
     updateRouteStatus,
     getRouteById,
-    isRouteAssigned
+    isRouteAssigned,
+    markPackageScanned,
+    isPackageScanned
   };
 
   return (

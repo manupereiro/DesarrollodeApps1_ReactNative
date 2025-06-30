@@ -2,17 +2,54 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
+import { useRoutes } from '../context/RoutesContext';
 
 const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, showActions = true }) => {
+  const { scannedPackages, isPackageScanned } = useRoutes();
+  
   // Debug: Log la ruta que recibe este componente
   console.log('🔍 RouteCard - Ruta recibida:', JSON.stringify(route, null, 2));
+  
+  // Debug: Log específicamente los paquetes y QR codes
+  if (route.packages && route.packages.length > 0) {
+    console.log('📦 RouteCard - Paquetes encontrados:', route.packages.length);
+    route.packages.forEach((pkg, index) => {
+      console.log(`📦 RouteCard - Paquete ${index + 1}:`, {
+        id: pkg.id,
+        description: pkg.description,
+        qrCode: pkg.qrCode ? `${pkg.qrCode.substring(0, 50)}...` : 'NO QR',
+        qrCodeLength: pkg.qrCode ? pkg.qrCode.length : 0
+      });
+    });
+  } else {
+    console.log('❌ RouteCard - Esta ruta NO tiene paquetes definidos');
+  }
+
+  // VERIFICACIÓN CRÍTICA: Double-check scanned packages
+  const hasAnyScannedPackage = route.packages?.some(pkg => {
+    const isScannedInPkg = pkg.scanned === true;
+    const isScannedInContext = isPackageScanned(pkg.id);
+    
+    console.log(`🔥 CRÍTICO - Paquete ${pkg.id}:`, {
+      scannedInPkg: isScannedInPkg,
+      scannedInContext: isScannedInContext,
+      finalResult: isScannedInPkg || isScannedInContext
+    });
+    
+    return isScannedInPkg || isScannedInContext;
+  }) || false;
+
+  // NUEVA LÓGICA DE ESTADOS:
+  // - ASSIGNED: Estado inicial en backend y local
+  // - IN_PROGRESS: Solo existe localmente, nunca se envía al backend
+  // - COMPLETED: Se envía al backend como ASSIGNED → COMPLETED (saltando IN_PROGRESS)
   const getStatusColor = (status) => {
     switch (status) {
       case 'AVAILABLE':
         return COLORS.success;
       case 'ASSIGNED':
         return COLORS.primary;
-      case 'IN_PROGRESS':
+      case 'IN_PROGRESS': // Solo local
         return COLORS.warning;
       case 'COMPLETED':
         return COLORS.gray;
@@ -105,6 +142,53 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </Text>
           </View>
         </View>
+
+        {/* Sección de Paquetes */}
+        {route.packages && route.packages.length > 0 && (
+          <View>
+            <View style={styles.divider} />
+            <View style={styles.packagesSection}>
+              <View style={styles.packagesSectionHeader}>
+                <MaterialIcons name="inventory" size={16} color={COLORS.primary} />
+                <Text style={styles.packagesSectionTitle}>
+                  Paquetes ({route.packages.length})
+                </Text>
+              </View>
+              
+              {route.packages.map((pkg, index) => (
+                <View key={pkg.id} style={styles.packageItem}>
+                  <View style={styles.packageInfo}>
+                    <MaterialIcons 
+                      name={pkg.scanned ? "check-circle" : "radio-button-unchecked"} 
+                      size={16} 
+                      color={pkg.scanned ? COLORS.success : COLORS.textSecondary} 
+                    />
+                    <Text style={[
+                      styles.packageDescription,
+                      pkg.scanned && styles.packageScanned
+                    ]}>
+                      {pkg.description || `Paquete ${pkg.id}`}
+                    </Text>
+                  </View>
+                  
+                  {pkg.scanned && (
+                    <View style={styles.scannedBadge}>
+                      <Text style={styles.scannedText}>Escaneado</Text>
+                    </View>
+                  )}
+                  
+                  {!pkg.scanned && route.status === 'ASSIGNED' && (
+                    <View style={styles.pendingBadge}>
+                      <Text style={styles.pendingText}>Pendiente</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+              
+              {/* NO mostrar código de confirmación aquí - se pedirá en modal */}
+            </View>
+          </View>
+        )}
       </View>
 
       {showActions && (
@@ -119,13 +203,24 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </TouchableOpacity>
           ) : (route.status === 'ASSIGNED') ? (
             <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.button, styles.qrButton]}
-                onPress={() => onNavigateToCode ? onNavigateToCode(route) : null}
-              >
-                <MaterialIcons name="qr-code-scanner" size={16} color={COLORS.textOnPrimary} />
-                <Text style={styles.buttonText}>Escanear QR</Text>
-              </TouchableOpacity>
+              {/* Verificar si ya tiene código de verificación o paquetes escaneados */}
+              {(route.verificationCode || route.confirmationCode || hasAnyScannedPackage) ? (
+                <TouchableOpacity
+                  style={[styles.button, styles.completeButton]}
+                  onPress={() => onComplete(route)}
+                >
+                  <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Completar Entrega</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.button, styles.qrButton]}
+                  onPress={() => onNavigateToCode ? onNavigateToCode(route) : null}
+                >
+                  <MaterialIcons name="qr-code-scanner" size={16} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Escanear QR</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => onCancel(route.id)}
@@ -136,13 +231,34 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </View>
           ) : (route.status === 'IN_PROGRESS') ? (
             <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.button, styles.completeButton]}
-                onPress={() => onNavigateToCode ? onNavigateToCode(route) : onComplete(route.id)}
-              >
-                <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />
-                <Text style={styles.buttonText}>Completar</Text>
-              </TouchableOpacity>
+              {/* DEBUG CRÍTICO: Decisión del botón */}
+              {(() => {
+                console.log(`🔥 CRÍTICO DECISIÓN - Ruta ${route.id}:`, {
+                  hasAnyScannedPackage,
+                  status: route.status,
+                  paquetes: route.packages?.map(p => ({ id: p.id, scanned: !!p.scanned }))
+                });
+                return null;
+              })()}
+              
+              {/* VERIFICACIÓN CON FALLBACK: usar hasAnyScannedPackage */}
+              {hasAnyScannedPackage ? (
+                <TouchableOpacity
+                  style={[styles.button, styles.completeButton]}
+                  onPress={() => onComplete(route)}
+                >
+                  <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Completar Entrega</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.button, styles.qrButton]}
+                  onPress={() => onNavigateToCode ? onNavigateToCode(route) : null}
+                >
+                  <MaterialIcons name="qr-code-scanner" size={16} color={COLORS.textOnPrimary} />
+                  <Text style={styles.buttonText}>Escanear QR</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => onCancel(route.id)}
@@ -293,6 +409,87 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     flex: 1,
     marginRight: SPACING.xs,
+  },
+  // Estilos para sección de paquetes
+  packagesSection: {
+    marginTop: SPACING.sm,
+  },
+  packagesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  packagesSectionTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginLeft: SPACING.xs,
+  },
+  packageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    backgroundColor: COLORS.lightGray,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.xs,
+  },
+  packageInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  packageDescription: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textPrimary,
+    marginLeft: SPACING.xs,
+    flex: 1,
+  },
+  packageScanned: {
+    color: COLORS.success,
+    fontWeight: '500',
+  },
+  scannedBadge: {
+    backgroundColor: `${COLORS.success}15`,
+    borderColor: COLORS.success,
+    borderWidth: 1,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.xs / 2,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  scannedText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.success,
+    fontWeight: '600',
+  },
+  pendingBadge: {
+    backgroundColor: `${COLORS.textSecondary}15`,
+    borderColor: COLORS.textSecondary,
+    borderWidth: 1,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.xs / 2,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  pendingText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  confirmationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.warning}15`,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginTop: SPACING.sm,
+  },
+  confirmationText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.warning,
+    fontWeight: '600',
+    marginLeft: SPACING.xs,
   },
 });
 
