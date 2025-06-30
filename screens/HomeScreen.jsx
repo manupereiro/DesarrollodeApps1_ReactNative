@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Alert,
   Image,
   SafeAreaView,
   ScrollView,
@@ -14,23 +13,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 const HomeScreen = () => {
-  const { logout, user } = useAuth(); 
+  const { user } = useAuth(); 
   const navigation = useNavigation();
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: logout, 
-        },
-      ]
-    );
-  };  return (
+    return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#86CDE2', '#055A85']}
@@ -54,12 +40,7 @@ const HomeScreen = () => {
               >
                 <Ionicons name="person-circle-outline" size={28} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.logoutButton}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={28} color="#fff" />
-              </TouchableOpacity>
+              {/* Botón de cerrar sesión eliminado */}
             </View>
           </View>
         </SafeAreaView>
@@ -170,9 +151,7 @@ const styles = StyleSheet.create({
     padding: 8,
     marginRight: 8,
   },
-  logoutButton: {
-    padding: 8,
-  },  scrollContent: {
+  scrollContent: {
     flexGrow: 1,
     backgroundColor: '#fff',
   },
