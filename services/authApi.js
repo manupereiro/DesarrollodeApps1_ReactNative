@@ -61,6 +61,8 @@ export const authApi = {
         username: credentials.username,
         password: credentials.password
       });
+      // Log del body real enviado
+      console.log('🔐 authApi.login - Body enviado:', JSON.stringify(credentials));
       
       // Verificar configuración de API antes de hacer la petición
       const config = getApiConfig();

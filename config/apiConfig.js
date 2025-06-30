@@ -1,39 +1,31 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// IP de tu computadora en la red local (detectada automáticamente)
-const LOCAL_IP = '192.168.0.243'; // 🔥 IP ACTUAL DETECTADA
+// Configuración para conectar con el backend Spring Boot
+const LOCAL_IP = '192.168.1.3'; // IP real del usuario
 
-// Función mejorada para detectar tipo de dispositivo
+// Función simplificada para detectar tipo de dispositivo
 const getDeviceType = () => {
   console.log('🔍 Detectando tipo de dispositivo:', {
     platform: Platform.OS,
     isDevice: Constants.isDevice,
-    experienceUrl: Constants.experienceUrl,
-    appOwnership: Constants.appOwnership,
-    executionEnvironment: Constants.executionEnvironment
+    appOwnership: Constants.appOwnership
   });
 
-  // Si está corriendo en Expo Go (appOwnership === 'expo'), es muy probable que sea dispositivo físico
+  // Si está corriendo en Expo Go, es dispositivo físico
   if (Constants.appOwnership === 'expo') {
-    console.log('📱 Detectado: Expo Go - Asumiendo dispositivo físico');
+    console.log('📱 Detectado: Expo Go - Dispositivo físico');
     return 'PHYSICAL_DEVICE';
   }
 
-  // Método tradicional mejorado
+  // Método tradicional
   if (Constants.isDevice === true) {
     return 'PHYSICAL_DEVICE';
   } else if (Constants.isDevice === false) {
     return Platform.OS === 'android' ? 'ANDROID_EMULATOR' : 'IOS_SIMULATOR';
   }
 
-  // Fallback: si isDevice es undefined, verificar otros indicadores
-  if (Constants.experienceUrl && Constants.experienceUrl.includes('192.168')) {
-    console.log('🌐 URL contiene IP local - Asumiendo dispositivo físico');
-    return 'PHYSICAL_DEVICE';
-  }
-
-  // Fallback final basado en plataforma
+  // Fallback
   console.log('⚠️ No se pudo determinar tipo de dispositivo, usando fallback');
   return Platform.OS === 'android' ? 'ANDROID_EMULATOR' : 'IOS_SIMULATOR';
 };
@@ -44,16 +36,16 @@ export const API_CONFIG = {
     
     console.log('🎯 Tipo de dispositivo determinado:', deviceType);
     
-    // SIEMPRE usar IP local para Expo Go y dispositivos físicos
+    // Para desarrollo con backend Spring Boot en localhost:8080
     if (deviceType === 'PHYSICAL_DEVICE') {
-      console.log('📱 Configurando para dispositivo físico');
-      return `http://${LOCAL_IP}:8080`;
+      console.log('📱 Configurando para dispositivo físico - usando IP local');
+      return `http://${LOCAL_IP}:8080/api`; // Usar la IP real del usuario + /api
     } else if (deviceType === 'ANDROID_EMULATOR') {
       console.log('🤖 Configurando para emulador Android');
-      return 'http://10.0.2.2:8080';
+      return 'http://10.0.2.2:8080/api'; // 10.0.2.2 es localhost para emulador Android
     } else {
       console.log('🍎 Configurando para simulador iOS');
-      return `http://${LOCAL_IP}:8080`;
+      return `http://localhost:8080/api`; // localhost para simulador iOS
     }
   })(),
   TIMEOUT: 30000,
