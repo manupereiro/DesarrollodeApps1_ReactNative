@@ -202,13 +202,9 @@ export const authApi = {
       await api.post('/auth/logout').catch(error => {
         // Si el error es 401 o 403, es normal durante el logout
         if (error.response?.status === 401 || error.response?.status === 403) {
-          console.log('🔒 Sesión cerrada exitosamente (token ya inválido)');
           return;
         }
-        console.warn('⚠️ Error no crítico durante logout:', error.message);
       });
-      
-      console.log('✅ Sesión cerrada exitosamente');
       return { success: true };
     } catch (error) {
       // No propagamos el error ya que el logout local es lo importante
