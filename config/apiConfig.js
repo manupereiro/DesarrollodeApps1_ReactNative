@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const LOCAL_IP = '192.168.0.15';
+const LOCAL_IP = '192.168.0.243';
 
 // Función para detectar tipo de dispositivo
 const getDeviceType = () => {

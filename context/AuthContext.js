@@ -166,6 +166,10 @@ export const AuthProvider = ({ children }) => {
       
       await TokenStorage.clearAll();
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
+    } catch (error) {
+      console.error('❌ Error en logout:', error);
+      // Asegurar que se ejecute el logout aunque falle algo
+      dispatch({ type: AUTH_ACTIONS.LOGOUT });
     }
   };
 
