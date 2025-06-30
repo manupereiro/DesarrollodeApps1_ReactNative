@@ -1,32 +1,26 @@
 import React from 'react';
-import { Alert, FlatList, StyleSheet, View, Text } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
+import { COLORS, FONT_SIZES, SPACING } from '../config/constants';
 import { useRoutes } from '../context/RoutesContext';
-import { COLORS, SPACING, FONT_SIZES } from '../config/constants';
 
 const AvailableRoutes = () => {
   const { availableRoutes, loading, error, selectRoute } = useRoutes();
-
-  // Debug: Log las rutas que llegan al componente
-  console.log('🔍 AvailableRoutes - Rutas disponibles:', availableRoutes?.length || 0);
-  if (availableRoutes && availableRoutes.length > 0) {
-    console.log('🔍 AvailableRoutes - Primera ruta completa:', JSON.stringify(availableRoutes[0], null, 2));
-  }
 
   const handleSelectRoute = async (routeId) => {
     try {
       await selectRoute(routeId);
       Alert.alert(
-        'Ruta seleccionada',
-        'Has seleccionado la ruta exitosamente',
+        'Pedido seleccionado',
+        'Has seleccionado el pedido exitosamente',
         [{ text: 'OK' }]
       );
     } catch (error) {
       Alert.alert(
         'Error',
-        error.message || 'Error al seleccionar la ruta'
+        error.message || 'Error al seleccionar el pedido'
       );
     }
   };
@@ -43,7 +37,7 @@ const AvailableRoutes = () => {
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay rutas disponibles en este momento</Text>
+          <Text style={styles.emptyText}>No hay pedidos disponibles en este momento</Text>
         </View>
       </View>
     );

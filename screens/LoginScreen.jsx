@@ -3,21 +3,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Dimensions,
-  SafeAreaView
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
 import { useAuth } from '../context/AuthContext';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION } from '../config/constants';
 
 const { height } = Dimensions.get('window');
 
@@ -26,6 +25,8 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { login, state } = useAuth();
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
   // Referencias para animaciones
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -61,28 +62,20 @@ const LoginScreen = ({ navigation }) => {
   }, []);
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    if (!username || !password) {
+      setError('Por favor completa todos los campos');
       return;
     }
 
+    setLoading(true);
+    setError('');
+
     try {
-      console.log('🔄 Intentando login con username:', username);
-      const credentials = { username: username.trim(), password: password.trim() };
-      await login(credentials);
-      console.log('✅ Login exitoso');
+      await login({ username, password });
     } catch (error) {
-      console.log('❌ Error en login:', error);
-      if (error.error === 'Account not verified' || error.message === 'Account not verified') {
-        Alert.alert(
-          'Cuenta no verificada',
-          'Tu cuenta no ha sido verificada. Para verificar necesitas tu email.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        const errorMessage = error.error || error.message || 'Error al iniciar sesión';
-        Alert.alert('Error', errorMessage);
-      }
+      setError(error.message || 'Error al iniciar sesión');
+    } finally {
+      setLoading(false);
     }
   };
 

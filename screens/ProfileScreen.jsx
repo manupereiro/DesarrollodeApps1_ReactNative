@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  SafeAreaView
-} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { BORDER_RADIUS, BUTTON_STYLES, CARD_STYLES, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
 import { useAuth } from '../context/AuthContext';
 import { useRoutes } from '../context/RoutesContext';
 import { profileApi } from '../services/profileApi';
-import TokenStorage from '../services/tokenStorage';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION, BUTTON_STYLES, CARD_STYLES } from '../config/constants';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -41,94 +39,52 @@ const ProfileScreen = ({ navigation }) => {
       }
       setError(null);
       
-      console.log('🔄 ProfileScreen - Iniciando carga de perfil...');
-      
-      // 1. Verificar estado del token
-      const currentTokenInfo = await TokenStorage.getTokenInfo();
+      const currentTokenInfo = await profileApi.getTokenInfo();
       setTokenInfo(currentTokenInfo);
       
-      console.log('🔍 ProfileScreen - Estado del token:', currentTokenInfo);
-      
-      if (!currentTokenInfo?.hasToken) {
-        console.warn('⚠️ ProfileScreen - No hay token, usando datos locales');
-        setProfileData(user);
+      if (!currentTokenInfo || !currentTokenInfo.hasToken) {
+        setError('No hay sesión activa');
         return;
       }
       
       if (currentTokenInfo.isExpired) {
-        console.warn('⚠️ ProfileScreen - Token expirado');
-        throw new Error('Token expirado. Por favor, inicia sesión nuevamente.');
+        setError('Sesión expirada');
+        return;
       }
       
-      // 2. Intentar auto-recovery si hay problemas previos
-      let profileResult;
-      if (retryCount > 0 || error) {
-        console.log('🔧 ProfileScreen - Usando auto-recovery...');
-        profileResult = await profileApi.recoverProfile();
-        
-        if (!profileResult.success) {
-          if (profileResult.needsReauth) {
-            throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
-          }
-          throw new Error(profileResult.error || 'Error recovering profile');
+      // Intentar auto-recovery si hay problemas
+      if (currentTokenInfo.expiresSoon) {
+        const recoveryResult = await profileApi.recoverProfile();
+        if (recoveryResult.success) {
+          setProfileData(recoveryResult.data);
+          return;
         }
-        
-        setProfileData(profileResult.data);
-      } else {
-        // 3. Carga normal del perfil
-        console.log('🔄 ProfileScreen - Carga normal del perfil...');
-        const profile = await profileApi.getProfile();
-        setProfileData(profile);
       }
       
-      console.log('✅ ProfileScreen - Perfil cargado exitosamente');
-      setRetryCount(0); // Reset retry count on success
+      const profileData = await profileApi.getProfile();
+      setProfileData(profileData);
       
     } catch (error) {
-      console.error('❌ ProfileScreen - Error cargando perfil:', error.message);
-      
-      // Manejar diferentes tipos de errores
-      if (error.message.includes('Token') || error.message.includes('sesión') || error.message.includes('authentication')) {
-        // Error de autenticación - usar datos locales si están disponibles
-        if (user) {
-          console.log('🔄 ProfileScreen - Usando datos locales del usuario');
-          setProfileData(user);
-          setError('Algunos datos pueden no estar actualizados. Desliza hacia abajo para actualizar.');
-        } else {
-          setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
-        }
-      } else if (error.message.includes('network') || error.message.includes('connectivity')) {
-        // Error de red - usar datos locales
-        if (user) {
-          setProfileData(user);
-          setError('Sin conexión. Mostrando datos guardados.');
-        } else {
-          setError('Sin conexión a internet. Revisa tu conexión.');
-        }
+      if (error.message.includes('No hay sesión activa')) {
+        setProfileData(null);
+      } else if (error.message.includes('Sesión expirada')) {
+        setProfileData(null);
       } else {
-        // Otros errores - ser permisivo
-        if (user) {
-          setProfileData(user);
-          setError('Error cargando algunos datos. Usando información local.');
-        } else {
-          setError('Error cargando el perfil. Intenta nuevamente.');
-        }
+        setError('Error al cargar el perfil');
       }
-      
-      setRetryCount(prev => prev + 1);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
   // Función de refresh más inteligente
-  const handleRefresh = useCallback(async () => {
-    console.log('🔄 ProfileScreen - Refresh solicitado...');
-    setRefreshing(true);
-    setError(null);
-    await loadProfileData(false);
-  }, [retryCount]);
+  const handleRefresh = async () => {
+    try {
+      await loadProfileData(false);
+    } catch (error) {
+      setError('Error al actualizar el perfil');
+    }
+  };
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -139,7 +95,6 @@ const ProfileScreen = ({ navigation }) => {
   useEffect(() => {
     if (error && retryCount > 0 && retryCount < 3) {
       const timer = setTimeout(() => {
-        console.log('🔄 ProfileScreen - Auto-retry debido a error...');
         loadProfileData(false);
       }, 30000);
       
@@ -147,31 +102,12 @@ const ProfileScreen = ({ navigation }) => {
     }
   }, [error, retryCount]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🔄 ProfileScreen - Cerrando sesión...');
-              await logout();
-              console.log('✅ ProfileScreen - Sesión cerrada exitosamente');
-            } catch (error) {
-              console.error('❌ ProfileScreen - Error cerrando sesión:', error);
-              // Continuar con el logout aunque falle
-            }
-          },
-        },
-      ],
-    );
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      // Si hay error en logout, aún así limpiar localmente
+    }
   };
 
   const handleRoutePress = (route) => {
@@ -179,10 +115,18 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   // Función para reintentar manualmente
-  const handleRetry = () => {
-    console.log('🔄 ProfileScreen - Retry manual solicitado...');
-    setError(null);
-    loadProfileData();
+  const handleRetry = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const profileData = await profileApi.getProfile();
+      setProfileData(profileData);
+    } catch (error) {
+      setError('Error al cargar el perfil');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Display de información del token (solo en desarrollo)

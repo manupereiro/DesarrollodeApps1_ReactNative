@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -30,7 +30,9 @@ const HomeScreen = () => {
         },
       ]
     );
-  };  return (
+  };
+
+  return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#86CDE2', '#055A85']}
@@ -76,7 +78,7 @@ const HomeScreen = () => {
           <Text style={styles.title}>¡Bienvenido!</Text>
           
           <Text style={styles.subtitle}>
-            Has iniciado sesión correctamente
+            Gestiona tus pedidos de manera eficiente
           </Text>
 
           {user && (
@@ -98,30 +100,71 @@ const HomeScreen = () => {
             </View>
           )}
 
-          <View style={styles.featuresCard}>
-            <Text style={styles.featuresTitle}>Próximas funcionalidades</Text>
-            <View style={styles.featuresList}>
-              <View style={styles.featureItem}>
-                <Ionicons name="location-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Gestión de rutas</Text>
+          {/* Estadísticas Rápidas */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Resumen del Día</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Ionicons name="checkmark-circle-outline" size={24} color="#4CAF50" />
+                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statLabel}>Entregados</Text>
               </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="qr-code-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Escaneo de códigos QR</Text>
+              <View style={styles.statCard}>
+                <Ionicons name="time-outline" size={24} color="#FF9800" />
+                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statLabel}>En Proceso</Text>
               </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="map-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Navegación con Google Maps</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="time-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Historial de entregas</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="notifications-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Notificaciones push</Text>
+              <View style={styles.statCard}>
+                <Ionicons name="trending-up-outline" size={24} color="#2196F3" />
+                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statLabel}>Disponibles</Text>
               </View>
             </View>
+          </View>
+
+          {/* Información Útil */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Información Útil</Text>
+            <View style={styles.infoCard}>
+              <View style={styles.infoItem}>
+                <Ionicons name="information-circle-outline" size={20} color="#055A85" />
+                <Text style={styles.infoText}>
+                  Escanea códigos QR para crear nuevos pedidos
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#4CAF50" />
+                <Text style={styles.infoText}>
+                  Confirma entregas para actualizar tu historial
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="notifications-outline" size={20} color="#FF9800" />
+                <Text style={styles.infoText}>
+                  Próximamente: Notificaciones push
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Soporte Rápido */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>¿Necesitas Ayuda?</Text>
+            <TouchableOpacity 
+              style={styles.helpButton}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <LinearGradient
+                colors={['#86CDE2', '#055A85']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.helpButtonGradient}
+              >
+                <Ionicons name="help-circle-outline" size={24} color="#fff" />
+                <Text style={styles.helpButtonText}>Ir a Configuración y Ayuda</Text>
+                <Ionicons name="chevron-forward" size={20} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -151,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: 'transparent',
-    paddingTop: 40, // <--- Agrega o aumenta este valor (por ejemplo 40)
+    paddingTop: 40,
   },
   headerTitle: {
     fontSize: 24,
@@ -172,102 +215,138 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 8,
-  },  scrollContent: {
+  },
+  scrollContent: {
     flexGrow: 1,
     backgroundColor: '#fff',
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 40,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   title: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '300',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     color: '#445357',
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 25,
     color: '#666',
   },
   userInfoCard: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   userInfoGradient: {
-    borderRadius: 15,
-    elevation: 5,
+    borderRadius: 12,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   userInfoContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   userIcon: {
-    marginRight: 15,
+    marginRight: 12,
   },
   userDetails: {
     flex: 1,
   },
   userInfoText: {
-    fontSize: 16,
-    marginBottom: 5,
+    fontSize: 14,
+    marginBottom: 3,
     color: '#fff',
     fontWeight: '500',
   },
-  featuresCard: {
-    backgroundColor: '#fff',
-    padding: 25,
-    borderRadius: 15,
+  section: {
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 15,
+    color: '#445357',
+    letterSpacing: 0.5,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E9ECEF',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#445357',
+    marginVertical: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  infoCard: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#445357',
+    marginLeft: 12,
+    flex: 1,
+  },
+  helpButton: {
+    borderRadius: 12,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
+    shadowRadius: 3,
   },
-  featuresTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 20,
-    color: '#445357',
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  featuresList: {
-    gap: 15,
-  },
-  featureItem: {
+  helpButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#86CDE2',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
   },
-  featureText: {
+  helpButtonText: {
     fontSize: 16,
-    marginLeft: 15,
-    color: '#445357',
     fontWeight: '500',
+    color: '#fff',
+    flex: 1,
+    marginLeft: 12,
   },
 });
 

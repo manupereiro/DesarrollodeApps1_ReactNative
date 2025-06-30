@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -24,6 +24,7 @@ const ConfirmationCodeScreen = () => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [confirmationCode, setConfirmationCode] = useState('');
 
   const handleConfirmDelivery = async () => {
     // Validar código
@@ -59,6 +60,7 @@ const ConfirmationCodeScreen = () => {
             }
           ]
         );
+        setConfirmationCode(code);
       } else {
         Alert.alert('❌ Código Incorrecto', result.message);
       }
@@ -84,6 +86,12 @@ const ConfirmationCodeScreen = () => {
     // Mostrar el código correcto como pista (solo para desarrollo)
     return `Código correcto: ${packageData?.confirmationCode || '123456'}`;
   };
+
+  useEffect(() => {
+    if (confirmationCode) {
+      console.log('🔑 ConfirmationCodeScreen - Código de confirmación recibido:', confirmationCode);
+    }
+  }, [confirmationCode]);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -4,16 +4,16 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
 import { useAuth } from '../context/AuthContext';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION } from '../config/constants';
 
 // Pantallas
 import AvailableRoutes from '../screens/AvailableRoutes';
+import ConfirmationCodeScreen from '../screens/ConfirmationCodeScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MyRoutes from '../screens/MyRoutes';
-import ConfirmationCodeScreen from '../screens/ConfirmationCodeScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import PackageInfoScreen from '../screens/PackageInfoScreen';
@@ -89,7 +89,7 @@ const MainTabs = () => {
         name="Routes"
         component={RoutesScreen}
         options={{
-          title: 'Rutas',
+          title: 'Pedidos',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="local-shipping" size={size} color={color} />
           ),

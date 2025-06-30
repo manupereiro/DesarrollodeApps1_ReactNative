@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
@@ -10,13 +12,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const { forgotPassword, state } = useAuth();
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -31,20 +32,16 @@ const ForgotPasswordScreen = ({ navigation }) => {
     }
 
     try {
-      console.log('🔄 ForgotPasswordScreen: Enviando código a:', email);
       const response = await forgotPassword(email);
-      console.log('✅ ForgotPasswordScreen: Código enviado, respuesta:', response);
       
       // Navegación directa SIN setTimeout ni Alert
-      console.log('🔄 ForgotPasswordScreen: Navegando INMEDIATAMENTE a VerifyCodeScreen');
       navigation.navigate('VerifyCode', { 
         email, 
         codeType: 'passwordReset' 
       });
-      console.log('✅ ForgotPasswordScreen: Navegación ejecutada');
       
+      setEmailSent(true);
     } catch (error) {
-      console.log('❌ ForgotPasswordScreen: Error enviando código:', error);
       Alert.alert('Error', error.error || 'Error al enviar código de recuperación');
     }
   };

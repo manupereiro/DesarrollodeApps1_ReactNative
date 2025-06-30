@@ -4,15 +4,19 @@ export const userApi = {
   savePushToken: async (expoPushToken) => {
     try {
       const response = await api.post('/users/push-token', { token: expoPushToken });
-      console.log('✅ Push Token guardado:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error guardando Push Token:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      });
-      throw error.response?.data || { error: 'Error guardando push token' };
+      throw error;
+    }
+  },
+
+  updatePushToken: async (pushToken) => {
+    try {
+      const api = await createAuthApiInstance(true);
+      const response = await api.post('/users/push-token', { pushToken });
+      return response.data;
+    } catch (error) {
+      throw error;
     }
   },
 };

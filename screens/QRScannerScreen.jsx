@@ -29,106 +29,26 @@ const QRScannerScreen = () => {
     setScanned(true);
     setIsValidating(true);
     
-    console.log('📱 QR Code escaneado:', data);
-    console.log('📱 QR Code details:', {
-      length: data.length,
-      preview: data.substring(0, 100)
-    });
-    
     try {
-      // Enviar DIRECTAMENTE a validación - el servicio se encarga de todo
-      console.log('🔍 Enviando QR a validación:', data);
-      
-      // Validar QR con el servicio de paquetes
-      const validationResult = await packagesService.validateQR(data);
+      // Validar el QR code
+      const validationResult = await packagesService.validateQRCode(data);
       
       if (validationResult.isValid) {
-        // QR válido - Mostrar información y proceder
-        Alert.alert(
-          '✅ QR Válido',
-          `Paquete: ${validationResult.packageInfo.description}\nDestinatario: ${validationResult.packageInfo.recipientName}`,
-          [
-            {
-              text: 'Cancelar',
-              style: 'cancel',
-              onPress: () => {
-                setScanned(false);
-                setIsValidating(false);
-              }
-            },
-            {
-              text: 'Ver Información del Paquete',
-              onPress: () => {
-                console.log('🚀 Navegando a PackageInfo con datos:', validationResult.packageInfo);
-                
-                // 1. MARCAR PAQUETE COMO ESCANEADO INMEDIATAMENTE
-                markPackageScanned(
-                  validationResult.packageInfo.routeId,
-                  validationResult.packageInfo.id,
-                  validationResult.packageInfo
-                );
-                
-                // 2. ACTUALIZAR ESTADO DE RUTA A IN_PROGRESS
-                updateRouteStatus(
-                  validationResult.packageInfo.routeId,
-                  'IN_PROGRESS'
-                );
-                
-                // 3. QUITAR ESTADOS DE LOADING
-                setScanned(false);
-                setIsValidating(false);
-                
-                // 4. IR DIRECTO A PACKAGEINFO
-                const packageWithScannedFlag = {
-                  ...validationResult.packageInfo,
-                  scanned: true,
-                  scannedAt: new Date().toISOString(),
-                  status: 'IN_PROGRESS'
-                };
-                
-                console.log('🎯 QRScanner - Navegando con paquete marcado como escaneado:', packageWithScannedFlag);
-                
-                navigation.navigate('PackageInfo', {
-                  packageData: packageWithScannedFlag,
-                  qrCode: data,
-                  fromQRScan: true
-                });
-              }
-            }
-          ]
-        );
+        // Navegar a la pantalla de información del paquete
+        navigation.navigate('PackageInfo', {
+          packageInfo: validationResult.packageInfo,
+          routeId: validationResult.packageInfo.routeId,
+          packageId: validationResult.packageInfo.id
+        });
       } else {
-        // QR no válido
-        Alert.alert(
-          '❌ QR No Válido',
-          validationResult.message,
-          [
-            {
-              text: 'Entendido',
-              onPress: () => {
-                setScanned(false);
-                setIsValidating(false);
-              }
-            },
-
-          ]
-        );
+        Alert.alert('QR Inválido', validationResult.message || 'Este código QR no es válido');
+        setScanned(false);
+        setIsValidating(false);
       }
     } catch (error) {
-      console.error('❌ Error validando QR:', error);
-      Alert.alert(
-        'Error de Conexión',
-        error.error || 'No se pudo validar el código QR. Verifica tu conexión a internet.',
-        [
-          {
-            text: 'Reintentar',
-            onPress: () => {
-              setScanned(false);
-              setIsValidating(false);
-            }
-          }
-        ]
-      );
+      Alert.alert('Error', 'Error al procesar el código QR');
+      setScanned(false);
+      setIsValidating(false);
     }
   };
 
@@ -172,12 +92,7 @@ const QRScannerScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleGoBack}
-          >
-            <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
-          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
           <Text style={styles.headerTitle}>Escanear QR</Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -206,7 +121,7 @@ const QRScannerScreen = () => {
             <View style={styles.instructionItem}>
               <MaterialIcons name="qr-code" size={20} color={COLORS.primary} />
               <Text style={styles.instructionText}>
-                El QR debe venir de "Mis Rutas" → Paquetes
+                El QR debe coincidir con el de alguno de los paquetes seleccionados en mis pedidos
               </Text>
             </View>
           </View>
@@ -242,28 +157,6 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.md,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  backButton: {
-    padding: SPACING.sm,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 20,
-  },
-  headerTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: 'bold',
-    color: COLORS.textOnPrimary,
-  },
-  headerSpacer: {
-    width: 40,
   },
   overlay: {
     position: 'absolute',
@@ -324,7 +217,7 @@ const styles = StyleSheet.create({
   },
   instructionsContainer: {
     position: 'absolute',
-    bottom: 150,
+    bottom: 80,
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,
   },
@@ -407,6 +300,23 @@ const styles = StyleSheet.create({
     color: COLORS.textOnPrimary,
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 50,
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.textOnPrimary,
+  },
+  headerSpacer: {
+    width: 40,
   },
 });
 

@@ -7,38 +7,6 @@ import { useRoutes } from '../context/RoutesContext';
 const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, showActions = true }) => {
   const { scannedPackages, isPackageScanned } = useRoutes();
   
-  // Debug: Log la ruta que recibe este componente
-  console.log('🔍 RouteCard - Ruta recibida:', JSON.stringify(route, null, 2));
-  
-  // Debug: Log específicamente los paquetes y QR codes
-  if (route.packages && route.packages.length > 0) {
-    console.log('📦 RouteCard - Paquetes encontrados:', route.packages.length);
-    route.packages.forEach((pkg, index) => {
-      console.log(`📦 RouteCard - Paquete ${index + 1}:`, {
-        id: pkg.id,
-        description: pkg.description,
-        qrCode: pkg.qrCode ? `${pkg.qrCode.substring(0, 50)}...` : 'NO QR',
-        qrCodeLength: pkg.qrCode ? pkg.qrCode.length : 0
-      });
-    });
-  } else {
-    console.log('❌ RouteCard - Esta ruta NO tiene paquetes definidos');
-  }
-
-  // VERIFICACIÓN CRÍTICA: Double-check scanned packages
-  const hasAnyScannedPackage = route.packages?.some(pkg => {
-    const isScannedInPkg = pkg.scanned === true;
-    const isScannedInContext = isPackageScanned(pkg.id);
-    
-    console.log(`🔥 CRÍTICO - Paquete ${pkg.id}:`, {
-      scannedInPkg: isScannedInPkg,
-      scannedInContext: isScannedInContext,
-      finalResult: isScannedInPkg || isScannedInContext
-    });
-    
-    return isScannedInPkg || isScannedInContext;
-  }) || false;
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'AVAILABLE':
@@ -216,16 +184,6 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </View>
           ) : (route.status === 'IN_PROGRESS') ? (
             <View style={styles.actionButtons}>
-              {/* DEBUG CRÍTICO: Decisión del botón */}
-              {(() => {
-                console.log(`🔥 CRÍTICO DECISIÓN - Ruta ${route.id}:`, {
-                  hasAnyScannedPackage,
-                  status: route.status,
-                  paquetes: route.packages?.map(p => ({ id: p.id, scanned: !!p.scanned }))
-                });
-                return null;
-              })()}
-              
               {/* VERIFICACIÓN CON FALLBACK: usar hasAnyScannedPackage */}
               {hasAnyScannedPackage ? (
                 <TouchableOpacity

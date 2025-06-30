@@ -21,115 +21,47 @@ const MyRoutes = () => {
   // CRÍTICO: Crear rutas sincronizadas con paquetes escaneados usando useMemo
   const syncedRoutes = useMemo(() => {
     const filtered = myRoutes.filter(route => route.status !== 'COMPLETED');
-    console.log('🗂️ MyRoutes - Filtrando rutas completadas:', {
-      total: myRoutes.length,
-      activas: filtered.length,
-      completadas: myRoutes.length - filtered.length
-    });
     
     return filtered.map(route => {
-        // Si la ruta tiene paquetes escaneados, debe estar IN_PROGRESS
-        const hasScannedPackages = route.packages?.some(pkg => isPackageScanned(pkg.id));
-        
-        const syncedRoute = {
-          ...route,
-          // Forzar status IN_PROGRESS si hay paquetes escaneados
-          status: hasScannedPackages ? 'IN_PROGRESS' : route.status,
-          packages: route.packages?.map(pkg => ({
-            ...pkg,
-            // Sincronizar estado scanned con el contexto global
-            scanned: isPackageScanned(pkg.id) || pkg.scanned
-          })) || []
-        };
-        
-        // Log para debug
-        if (hasScannedPackages && route.status !== 'IN_PROGRESS') {
-          console.log(`🔄 MyRoutes - Sincronizando ruta ${route.id}: ${route.status} → IN_PROGRESS`);
-        }
-        
-        return syncedRoute;
-      });
-  }, [myRoutes, scannedPackages, isPackageScanned]);
+      const hasScannedPackages = route.packages?.some(pkg => 
+        pkg.scanned || scannedPackages.has(pkg.id)
+      );
+      
+      const syncedRoute = {
+        ...route,
+        packages: route.packages?.map(pkg => ({
+          ...pkg,
+          scanned: pkg.scanned || scannedPackages.has(pkg.id)
+        })) || []
+      };
+      
+      return syncedRoute;
+    });
+  }, [myRoutes, scannedPackages]);
 
   // CRÍTICO: NO recargar automáticamente para preservar cambios locales
   useEffect(() => {
     // Solo cargar rutas si no tenemos ninguna
     if (myRoutes.length === 0) {
-      console.log('📱 MyRoutes - Cargando rutas por primera vez');
       loadRoutes();
-    } else {
-      console.log('📱 MyRoutes - YA tenemos rutas, NO recargar para preservar estado local');
     }
   }, []);
-
-  // DEBUG: Log rutas sincronizadas cuando cambian las originales
-  useEffect(() => {
-    const syncedRoutesDebug = syncedRoutes.map(r => ({
-      id: r.id,
-      status: r.status,
-      packages: r.packages?.length || 0,
-      scannedPackages: r.packages?.filter(pkg => pkg.scanned).length || 0
-    }));
-    
-    console.log('🔄 MyRoutes - Rutas sincronizadas:', syncedRoutesDebug);
-  }, [myRoutes, scannedPackages]);
 
   // Escuchar cuando la pantalla se enfoca (cuando navegas desde PackageInfo)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('🔥 CRÍTICO MyRoutes - Pantalla enfocada, PRESERVANDO estado local...');
-      console.log('🔥 CRÍTICO MyRoutes - Estado scannedPackages:', Array.from(scannedPackages));
-      console.log('🔥 CRÍTICO MyRoutes - myRoutes originales:', myRoutes.length);
-      
-      // CRÍTICO: NO recargar rutas aquí, solo forzar re-render
-      console.log('🛡️ MyRoutes - EVITANDO loadRoutes() para preservar cambios locales');
-      
-      // Forzar re-render usando un estado local
       setForceUpdate(prev => prev + 1);
     });
 
     return unsubscribe;
   }, [navigation, scannedPackages, myRoutes]);
 
-  // DEBUG: Log cuando cambian las rutas o paquetes escaneados
-  useEffect(() => {
-    console.log('📱 MyRoutes - Estado actualizado:', {
-      rutasOriginales: myRoutes.length,
-      rutasSincronizadas: syncedRoutes.length,
-      scannedPackagesCount: scannedPackages.size,
-      scannedPackageIds: Array.from(scannedPackages)
-    });
-    
-    // Log detalles de cada ruta SINCRONIZADA
-    syncedRoutes.forEach(route => {
-      console.log(`📋 MyRoutes - Ruta SINCRONIZADA ${route.id}:`, {
-        status: route.status,
-        packages: route.packages?.length || 0,
-        scannedPackages: route.packages?.filter(pkg => pkg.scanned).length || 0
-      });
-    });
-  }, [myRoutes, scannedPackages]);
-
   const handleCancelRoute = async (routeId) => {
-    Alert.alert(
-      'Cancelar Ruta',
-      '¿Estás seguro que deseas cancelar esta ruta?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Sí, cancelar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelRoute(routeId);
-              Alert.alert('Éxito', 'Ruta cancelada exitosamente');
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo cancelar la ruta');
-            }
-          }
-        }
-      ]
-    );
+    try {
+      await cancelRoute(routeId);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo cancelar la ruta');
+    }
   };
 
   const handleNavigateToQR = (route) => {
@@ -159,88 +91,52 @@ const MyRoutes = () => {
   };
 
   const handleCompleteDelivery = async (route) => {
-    console.log('🔐 MyRoutes - Abriendo modal de verificación para ruta:', route.id);
-    
-    // MOSTRAR CÓDIGO EN CONSOLA - SOLO PARA CONSOLA, NO EN PANTALLA
     const currentVerificationCode = route.verificationCode || route.confirmationCode;
-    if (currentVerificationCode) {
-      console.log('🔐🔐🔐 EL CODIGO DE VERIFICACION ES:', currentVerificationCode, '🔐🔐🔐');
-    } else {
-      console.log('⚠️ MyRoutes - No se encontró código de verificación para la ruta');
-    }
     
     // Abrir modal de verificación
     setSelectedRoute(route);
+    setShowVerificationModal(true);
     setVerificationCode('');
     setVerificationError('');
-    setShowVerificationModal(true);
   };
 
-  // Nueva función para verificar código e completar entrega
-  const handleVerifyAndComplete = async () => {
-    if (!selectedRoute) return;
-    
+  const handleVerifyCode = async () => {
+    if (!verificationCode.trim()) {
+      setVerificationError('Por favor ingresa el código de verificación');
+      return;
+    }
+
     const expectedCode = selectedRoute.verificationCode || selectedRoute.confirmationCode;
-    
-    console.log('🔐 MyRoutes - Verificando código:', {
-      ingresado: verificationCode,
-      esperado: expectedCode,
-      ruta: selectedRoute.id
-    });
     
     // Verificar código
     if (verificationCode.trim() === expectedCode) {
       try {
-        console.log('✅ MyRoutes - Código correcto, completando entrega...');
-        
         // Cerrar modal
         setShowVerificationModal(false);
         setSelectedRoute(null);
         setVerificationCode('');
         setVerificationError('');
-        
-        // Completar entrega con timestamp
+
+        // Actualizar estado de la ruta a completada
         const completedAt = new Date().toISOString();
-        await updateRouteStatus(selectedRoute.id, 'COMPLETED', { 
+        updateRouteStatus(selectedRoute.id, 'COMPLETED', {
           completedAt,
           completedDate: new Date().toLocaleDateString(),
           completedTime: new Date().toLocaleTimeString()
         });
         
-        console.log('✅ MyRoutes - Entrega completada con timestamp:', {
-          ruta: selectedRoute.id,
-          completedAt,
-          startedAt: selectedRoute.startedAt
-        });
-        
-        console.log('📝 MyRoutes - La ruta desaparecerá de "Mis Rutas" y estará disponible en el historial de pedidos');
-        
-        // Forzar actualización para que la ruta desaparezca inmediatamente
-        setTimeout(() => {
-          setForceUpdate(prev => prev + 1);
-        }, 100);
-        
         Alert.alert(
-          '✅ Entrega Completada', 
-          'La entrega se ha completado exitosamente y se ha agregado al historial de pedidos.'
+          '✅ Entrega Completada',
+          'La entrega se ha completado exitosamente. La ruta aparecerá en tu historial de pedidos.',
+          [{ text: 'OK' }]
         );
       } catch (error) {
-        console.error('❌ MyRoutes - Error completando entrega:', error);
         Alert.alert('Error', 'No se pudo completar la entrega');
       }
     } else {
       // Código incorrecto
-      console.log('❌ MyRoutes - Código incorrecto. Esperado:', expectedCode, 'Ingresado:', verificationCode.trim());
       setVerificationError('Código de verificación incorrecto');
     }
-  };
-
-  // Cancelar modal de verificación
-  const handleCancelVerification = () => {
-    setShowVerificationModal(false);
-    setSelectedRoute(null);
-    setVerificationCode('');
-    setVerificationError('');
   };
 
   const getStatusCounts = () => {
@@ -264,17 +160,17 @@ const MyRoutes = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <MaterialIcons name="local-shipping" size={64} color={COLORS.textSecondary} />
-      <Text style={styles.emptyTitle}>No tienes rutas activas</Text>
+      <Text style={styles.emptyTitle}>No tienes pedidos activos</Text>
       <Text style={styles.emptySubtitle}>
-        Ve a "Rutas Disponibles" para seleccionar una ruta.{'\n'}
-        Las rutas completadas aparecen en el historial desde tu perfil.
+        Ve a "Pedidos Disponibles" para seleccionar un pedido.{'\n'}
+        Los pedidos completados aparecen en el historial desde tu perfil.
       </Text>
       <TouchableOpacity
         style={styles.availableRoutesButton}
         onPress={() => navigation.navigate('AvailableRoutes')}
       >
         <MaterialIcons name="add-road" size={20} color={COLORS.textOnPrimary} />
-        <Text style={styles.availableRoutesButtonText}>Ver Rutas Disponibles</Text>
+        <Text style={styles.availableRoutesButtonText}>Ver Pedidos Disponibles</Text>
       </TouchableOpacity>
     </View>
   );
@@ -282,7 +178,7 @@ const MyRoutes = () => {
   const statusCounts = getStatusCounts();
 
   if (loading) {
-    return <LoadingSpinner message="Cargando tus rutas..." />;
+    return <LoadingSpinner message="Cargando tus pedidos..." />;
   }
 
   return (
@@ -292,7 +188,7 @@ const MyRoutes = () => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis Rutas</Text>
+        <Text style={styles.headerTitle}>Mis Pedidos</Text>
         <TouchableOpacity onPress={loadRoutes}>
           <MaterialIcons name="refresh" size={24} color={COLORS.textOnPrimary} />
         </TouchableOpacity>
@@ -332,7 +228,7 @@ const MyRoutes = () => {
           onPress={() => navigation.navigate('AvailableRoutes')}
         >
           <MaterialIcons name="add-road" size={24} color={COLORS.primary} />
-          <Text style={styles.quickActionText}>Nuevas Rutas</Text>
+          <Text style={styles.quickActionText}>Nuevos Pedidos</Text>
         </TouchableOpacity>
       </View>
 
@@ -360,7 +256,6 @@ const MyRoutes = () => {
         ListEmptyComponent={!loading && !error ? renderEmptyState : null}
         refreshing={loading}
         onRefresh={() => {
-          console.log('🔄 MyRoutes - Refresh manual solicitado');
           loadRoutes();
         }}
       />
@@ -370,32 +265,27 @@ const MyRoutes = () => {
         visible={showVerificationModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={handleCancelVerification}
+        onRequestClose={() => {
+          setShowVerificationModal(false);
+          setVerificationCode('');
+          setVerificationError('');
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <MaterialIcons name="verified-user" size={24} color={COLORS.primary} />
-              <Text style={styles.modalTitle}>Verificación de Entrega</Text>
+              <Text style={styles.modalTitle}>Confirmar Entrega</Text>
+              {selectedRoute && (
+                <View style={styles.routeInfo}>
+                  <Text style={styles.routeLabel}>Pedido: {selectedRoute.id}</Text>
+                  <Text style={styles.routeDestination}>{selectedRoute.destination}</Text>
+                </View>
+              )}
             </View>
             
             <Text style={styles.modalSubtitle}>
               Ingresa el código de verificación para completar la entrega:
             </Text>
-            
-            {selectedRoute && (
-              <View style={styles.routeInfo}>
-                <Text style={styles.routeLabel}>Ruta: {selectedRoute.id}</Text>
-                <Text style={styles.routeDestination}>{selectedRoute.destination}</Text>
-                {/* DEBUG - Log datos de la ruta seleccionada */}
-                {console.log('🔍 Modal - Datos de ruta seleccionada:', {
-                  id: selectedRoute.id,
-                  verificationCode: selectedRoute.verificationCode,
-                  confirmationCode: selectedRoute.confirmationCode,
-                  packages: selectedRoute.packages?.length || 0
-                })}
-              </View>
-            )}
             
             <View style={styles.inputContainer}>
               <TextInput
@@ -427,7 +317,11 @@ const MyRoutes = () => {
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={handleCancelVerification}
+                onPress={() => {
+                  setShowVerificationModal(false);
+                  setVerificationCode('');
+                  setVerificationError('');
+                }}
               >
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
@@ -438,7 +332,7 @@ const MyRoutes = () => {
                   styles.confirmButton,
                   !verificationCode.trim() ? styles.disabledButton : null
                 ]}
-                onPress={handleVerifyAndComplete}
+                onPress={handleVerifyCode}
                 disabled={!verificationCode.trim()}
               >
                 <MaterialIcons name="check-circle" size={16} color={COLORS.textOnPrimary} />

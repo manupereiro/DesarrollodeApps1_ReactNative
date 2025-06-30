@@ -10,18 +10,15 @@ const createProfileApiInstance = async () => {
   const tokenInfo = await TokenStorage.getTokenInfo();
   
   if (!tokenInfo || !tokenInfo.hasToken) {
-    console.warn('⚠️ profileApi - No hay token válido disponible');
     throw new Error('No authentication token available');
   }
   
   if (tokenInfo.isExpired) {
-    console.warn('⚠️ profileApi - Token expirado, limpiando datos...');
     await TokenStorage.clearAllAuthData();
     throw new Error('Token expired');
   }
   
   if (tokenInfo.expiresSoon) {
-    console.warn(`⚠️ profileApi - Token expira pronto (${tokenInfo.expiresInMinutes} minutos)`);
   }
   
   const token = await TokenStorage.getToken();
@@ -31,13 +28,6 @@ const createProfileApiInstance = async () => {
     ...config.headers,
     Authorization: `Bearer ${token}`,
   };
-  
-  console.log('🔐 profileApi - Headers configurados:', {
-    'Content-Type': headers['Content-Type'],
-    'Accept': headers['Accept'],
-    'Authorization': `Bearer ${token.substring(0, 20)}...`,
-    tokenLength: token.length
-  });
   
   return axios.create({
     ...config,
@@ -53,7 +43,6 @@ const requestsInProgress = new Map();
 const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
   // Evitar requests duplicados
   if (requestsInProgress.has(requestKey)) {
-    console.log('🔄 profileApi - Request ya en progreso, evitando duplicado:', requestKey);
     return requestsInProgress.get(requestKey);
   }
 
@@ -63,63 +52,33 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔄 profileApi - Intento ${attempt}/${maxRetries} para:`, requestKey);
-        
         // Verificar token antes de cada intento
         const tokenInfo = await TokenStorage.getTokenInfo();
         if (!tokenInfo || !tokenInfo.hasToken || tokenInfo.isExpired) {
-          console.warn('⚠️ profileApi - Token inválido, abortando request');
           throw new Error('Invalid token');
         }
         
         const api = await createProfileApiInstance();
         const result = await requestFn(api);
         
-        console.log('✅ profileApi - Request exitoso:', requestKey);
         return result;
         
       } catch (error) {
         lastError = error;
         const status = error.response?.status;
         
-        console.log(`❌ profileApi - Error en intento ${attempt}:`, {
-          message: error.message,
-          status,
-          isNetworkError: !status,
-          isAuthError: status === 401 || status === 403,
-          url: error.config?.url
-        });
-        
         // Manejar errores de autenticación con contador
         if (status === 401 || status === 403) {
           consecutiveAuthErrors++;
-          console.log(`🔑 profileApi - Error de autenticación #${consecutiveAuthErrors}`);
-          
-          // Logging adicional para debug del error 403
-          if (status === 403) {
-            console.log('🔍 profileApi - Detalles del error 403:', {
-              url: error.config?.url,
-              method: error.config?.method,
-              headers: {
-                'Content-Type': error.config?.headers?.['Content-Type'],
-                'Accept': error.config?.headers?.['Accept'],
-                'Authorization': error.config?.headers?.['Authorization'] ? 
-                  `Bearer ${error.config.headers.Authorization.substring(7, 27)}...` : 'No present'
-              },
-              responseData: error.response?.data
-            });
-          }
           
           // Solo limpiar tokens después de múltiples errores consecutivos
           if (consecutiveAuthErrors >= 2) {
-            console.warn('🔑 profileApi - Múltiples errores de auth, limpiando tokens...');
             await TokenStorage.clearAllAuthData();
             throw new Error('Authentication failed - tokens cleared');
           }
           
           // Para el primer error 401/403, esperar un poco y reintentar
           if (attempt < maxRetries) {
-            console.log('🔑 profileApi - Esperando antes de reintentar...');
             await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
           }
@@ -127,10 +86,8 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
         
         // Manejar errores de red con backoff exponencial
         if (!status) {
-          console.log('🌐 profileApi - Error de red, reintentando...');
           if (attempt < maxRetries) {
             const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-            console.log(`⏳ profileApi - Esperando ${delayMs}ms antes del siguiente intento...`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
             continue;
           }
@@ -138,7 +95,6 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
         
         // No reintentar otros errores 4xx (excepto 401/403 ya manejados)
         if (status && status >= 400 && status < 500 && status !== 401 && status !== 403) {
-          console.log('🚫 profileApi - Error no reintentable:', status);
           break;
         }
         
@@ -147,13 +103,11 @@ const makeProfileRequest = async (requestKey, requestFn, maxRetries = 3) => {
         
         // Delay estándar para otros errores
         const delayMs = 1000 * attempt;
-        console.log(`⏳ profileApi - Esperando ${delayMs}ms antes del siguiente intento...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
     
     // Si llegamos aquí, todos los intentos fallaron
-    console.error('❌ profileApi - Todos los intentos fallaron para:', requestKey);
     throw lastError;
   })();
 
@@ -172,10 +126,8 @@ export const profileApi = {
   checkTokenStatus: async () => {
     try {
       const tokenInfo = await TokenStorage.getTokenInfo();
-      console.log('🔍 profileApi - Estado del token:', tokenInfo);
       return tokenInfo;
     } catch (error) {
-      console.error('❌ profileApi - Error verificando token:', error);
       return { hasToken: false, isExpired: true };
     }
   },
@@ -185,9 +137,7 @@ export const profileApi = {
     const requestKey = 'getProfile';
     
     return makeProfileRequest(requestKey, async (api) => {
-      console.log('🔄 profileApi - Obteniendo datos del perfil...');
       const response = await api.get('/users/me');
-      console.log('✅ profileApi - Perfil obtenido exitosamente');
       return response.data;
     });
   },
@@ -198,10 +148,8 @@ export const profileApi = {
       const config = getApiConfig();
       const api = axios.create(config);
       await api.get('/routes/health');
-      console.log('✅ profileApi - Conectividad OK');
       return true;
     } catch (error) {
-      console.warn('⚠️ profileApi - Sin conectividad:', error.message);
       return false;
     }
   },
@@ -209,8 +157,6 @@ export const profileApi = {
   // Auto-recovery del perfil con múltiples estrategias
   recoverProfile: async () => {
     try {
-      console.log('🔧 profileApi - Iniciando auto-recovery del perfil...');
-      
       // 1. Verificar conectividad básica
       const isConnected = await profileApi.testConnection();
       if (!isConnected) {
@@ -224,20 +170,16 @@ export const profileApi = {
       }
       
       if (tokenInfo.isExpired) {
-        console.log('🔧 profileApi - Token expirado, limpiando datos...');
         await TokenStorage.clearAllAuthData();
         throw new Error('Token expired and cleared');
       }
       
       // 3. Intentar obtener el perfil con estrategia conservadora
-      console.log('🔧 profileApi - Intentando obtener perfil...');
       const profile = await profileApi.getProfile();
       
-      console.log('✅ profileApi - Auto-recovery exitoso');
       return { success: true, data: profile };
       
     } catch (error) {
-      console.error('❌ profileApi - Auto-recovery falló:', error.message);
       return { 
         success: false, 
         error: error.message,

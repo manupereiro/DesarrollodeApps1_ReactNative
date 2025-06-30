@@ -26,18 +26,12 @@ const PackageInfoScreen = () => {
   const { updateRouteStatus, markPackageScanned } = useRoutes();
 
   useEffect(() => {
-    console.log('📦 PackageInfoScreen - Parámetros recibidos:', {
-      hasPackageData: !!packageData,
-      hasQRCode: !!qrCode,
-      fromQRScan: !!fromQRScan,
-      packageId: packageData?.id,
-      routeId: packageData?.routeId
-    });
-    
-    if (!packageData && qrCode) {
-      loadPackageInfo();
+    if (route.params) {
+      const { packageInfo, routeId, packageId } = route.params;
+      setPackage(packageInfo);
+      updateRouteStatus(routeId, 'IN_PROGRESS');
     }
-  }, []);
+  }, [route.params]);
 
   const loadPackageInfo = async () => {
     try {
@@ -64,78 +58,59 @@ const PackageInfoScreen = () => {
   };
 
   const handleConfirmScannedPackage = () => {
-    console.log('🔥 CRÍTICO - handleConfirmScannedPackage EJECUTÁNDOSE');
+    if (!packageData || !route.params.routeId || !route.params.packageId) {
+      Alert.alert('Error', 'Datos del paquete incompletos');
+      return;
+    }
+
+    // Generar código de verificación único
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // GENERAR código de verificación automáticamente
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6 dígitos
-    console.log('🔐 PackageInfo - CÓDIGO DE VERIFICACIÓN GENERADO:', verificationCode);
+    // MOSTRAR EL CÓDIGO DE CONFIRMACIÓN EN CONSOLA
+    console.log('🔐🔐🔐 EL CODIGO DE VERIFICACION ES:', verificationCode, '🔐🔐🔐');
     
-    // CRÍTICO: Re-marcar el paquete como escaneado para asegurar persistencia
-    console.log('🔥 CRÍTICO - Marcando paquete con datos:', {
-      routeId: package_.routeId,
-      packageId: package_.id,
-      verificationCode: verificationCode
-    });
-    
-    // Crear datos actualizados del paquete CON código de verificación
-    const updatedPackageData = {
-      ...package_, 
-      scanned: true, 
+    // Marcar paquete como escaneado con datos completos
+    markPackageScanned(route.params.routeId, route.params.packageId, {
+      scanned: true,
       scannedAt: new Date().toISOString(),
-      verificationCode: verificationCode // AGREGAR código al paquete
-    };
-    
-    markPackageScanned(
-      package_.routeId,
-      package_.id,
-      updatedPackageData
-    );
-    
-    // También asegurar que la ruta esté en IN_PROGRESS CON código de verificación y timestamp
-    const startedAt = new Date().toISOString();
-    updateRouteStatus(package_.routeId, 'IN_PROGRESS', { 
-      verificationCode,
-      startedAt,
-      startedDate: new Date().toLocaleDateString(),
-      startedTime: new Date().toLocaleTimeString()
+      verificationCode: verificationCode,
+      confirmationCode: verificationCode, // Usar el mismo código para confirmación
+      description: packageData.description,
+      recipientName: packageData.recipientName,
+      recipientPhone: packageData.recipientPhone,
+      address: packageData.address
     });
-    
-    // FORZAR multiple veces para asegurar persistencia
+
+    // Re-marcar después de un delay para asegurar que se procese
     setTimeout(() => {
-      console.log('🔥 CRÍTICO - Re-marcando paquete después de 200ms');
-      markPackageScanned(
-        package_.routeId,
-        package_.id,
-        updatedPackageData
-      );
+      markPackageScanned(route.params.routeId, route.params.packageId, {
+        scanned: true,
+        scannedAt: new Date().toISOString(),
+        verificationCode: verificationCode,
+        confirmationCode: verificationCode,
+        description: packageData.description,
+        recipientName: packageData.recipientName,
+        recipientPhone: packageData.recipientPhone,
+        address: packageData.address
+      });
     }, 200);
-    
+
+    // Re-marcar una vez más después de otro delay
     setTimeout(() => {
-      console.log('🔥 CRÍTICO - Re-marcando paquete después de 500ms');
-      markPackageScanned(
-        package_.routeId,
-        package_.id,
-        updatedPackageData
-      );
+      markPackageScanned(route.params.routeId, route.params.packageId, {
+        scanned: true,
+        scannedAt: new Date().toISOString(),
+        verificationCode: verificationCode,
+        confirmationCode: verificationCode,
+        description: packageData.description,
+        recipientName: packageData.recipientName,
+        recipientPhone: packageData.recipientPhone,
+        address: packageData.address
+      });
     }, 500);
-    
-    console.log('🎯 PackageInfo - Paquete confirmado con código de verificación:', verificationCode);
-    
-    Alert.alert(
-      '✅ Paquete Confirmado',
-      `El paquete ha sido marcado correctamente y se ha generado el código de verificación.\n\nAhora está listo para completar la entrega en "Mis Rutas".`,
-      [
-        {
-          text: 'Ir a Mis Rutas',
-          onPress: () => {
-            // Esperar un poco antes de navegar para que se procesen las actualizaciones
-            setTimeout(() => {
-              navigation.navigate('MyRoutes');
-            }, 100);
-          }
-        }
-      ]
-    );
+
+    // Navegar a la pantalla de detalles de la ruta
+    navigation.navigate('MyRoutes');
   };
 
   const openInGoogleMaps = () => {

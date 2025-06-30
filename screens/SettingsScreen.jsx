@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,14 +40,57 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleHelp = () => {
-    // TODO: Implementar sección de ayuda
-    Alert.alert('Próximamente', 'Sección de ayuda en desarrollo');
+    Alert.alert(
+      'Ayuda y Soporte',
+      '📱 Cómo usar la aplicación:\n\n' +
+      '• Escanea códigos QR de paquetes para validarlos\n' +
+      '• Gestiona tus pedidos asignados\n' +
+      '• Confirma entregas con códigos de verificación\n\n' +
+      '🔧 Solución de problemas:\n\n' +
+      '• Verifica tu conexión a internet\n' +
+      '• Asegúrate de que el QR sea válido\n' +
+      '• Contacta soporte si persisten los problemas\n\n' +
+      '📞 Contacto:\n' +
+      'Email: soporte@logistica.com\n' +
+      'Teléfono: +54 11 1234-5678\n' +
+      'Horario: Lunes a Viernes 9:00-18:00',
+      [
+        { text: 'Entendido', style: 'default' },
+        { text: 'Contactar Soporte', onPress: () => {
+          Alert.alert('Contacto', 'Redirigiendo a soporte...');
+        }}
+      ]
+    );
   };
 
   const handleAbout = () => {
-    // TODO: Implementar sección de acerca de
-    Alert.alert('Acerca de', 'Versión 1.0.0\nDesarrollado con ❤️');
+    Alert.alert(
+      'Acerca de',
+      '🚚 Sistema de Gestión Logística\n\n' +
+      'Versión: 1.0.0\n' +
+      'Build: 2024.12.30\n\n' +
+      'Desarrollado con React Native y Expo\n' +
+      'Backend: Spring Boot\n\n' +
+      'Características:\n' +
+      '• Escaneo de códigos QR\n' +
+      '• Gestión de pedidos en tiempo real\n' +
+      '• Confirmación de entregas\n' +
+      '• Historial de actividades\n\n' +
+      '© 2024 Logística Express\n' +
+      'Todos los derechos reservados\n\n' +
+      'Desarrollado con ❤️ para optimizar la logística',
+      [
+        { text: 'Cerrar', style: 'default' },
+        { text: 'Términos y Condiciones', onPress: () => {
+          Alert.alert('Términos y Condiciones', 'Los términos y condiciones están disponibles en nuestra página web.');
+        }},
+        { text: 'Política de Privacidad', onPress: () => {
+          Alert.alert('Política de Privacidad', 'Tu privacidad es importante para nosotros. Consulta nuestra política completa en la web.');
+        }}
+      ]
+    );
   };
+
   const renderOption = (icon, title, onPress, isDestructive = false) => (
     <TouchableOpacity 
       style={styles.optionButton} 
