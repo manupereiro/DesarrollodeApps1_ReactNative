@@ -77,29 +77,39 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthState = async () => {
     try {
-      console.log('AuthContext: Verificando estado de autenticación...');
+      console.log('🔍 Verificando estado de autenticación...');
       
-      // Delay inicial para evitar race conditions al inicio de la app
+      // Delay inicial para evitar race conditions
       await new Promise(resolve => setTimeout(resolve, 200));
       
       const { token, userData } = await TokenStorage.getAuthData();
       
       if (token) {
-        console.log('AuthContext: Token encontrado, actualizando estado...');
+        console.log('✅ Token encontrado, restaurando sesión...');
         
-        // Delay adicional para asegurar que otros servicios estén listos
         await new Promise(resolve => setTimeout(resolve, 100));
         
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: { token, user: userData },
         });
+        
+        // Restaurar Long Polling
+        try {
+          const longPollingService = (await import('../services/longPollingService')).default;
+          longPollingService.setAuthToken(token);
+          longPollingService.setPollingInterval(30000);
+          await longPollingService.start();
+          console.log('📡 Long Polling restaurado');
+        } catch (error) {
+          console.error('⚠️ Error restaurando Long Polling:', error);
+        }
       } else {
-        console.log('AuthContext: No se encontró token, limpiando estado...');
+        console.log('❌ No se encontró token');
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       }
     } catch (error) {
-      console.error('AuthContext: Error al verificar estado de autenticación:', error);
+      console.error('❌ Error verificando autenticación:', error);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
     }
   };
@@ -110,33 +120,13 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Usuario y contraseña son requeridos');
       }
       
-      console.log('AuthContext: Iniciando login con username:', credentials.username);
+      console.log('🔐 Iniciando login para:', credentials.username);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       
-      // Llamar a authApi.login con el objeto credentials
       const response = await authApi.login(credentials);
       
-      console.log('AuthContext: Login exitoso, respuesta recibida:', {
-        hasToken: !!response.token,
-        tokenLength: response.token?.length,
-        hasUser: !!response.user,
-        userData: response.user ? {
-          id: response.user.id,
-          username: response.user.username,
-          role: response.user.role
-        } : null
-      });
-
-      console.log('AuthContext: Guardando token y datos de usuario...');
+      console.log('✅ Login exitoso');
       await TokenStorage.setAuthData(response.token, response.user || null);
-      
-      // Verificar que el token se guardó correctamente
-      const { token: savedToken, userData: savedUserData } = await TokenStorage.getAuthData();
-      console.log('AuthContext: Verificación de datos guardados:', {
-        tokenSaved: !!savedToken,
-        tokenLength: savedToken?.length,
-        userDataSaved: !!savedUserData
-      });
       
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -146,10 +136,20 @@ export const AuthProvider = ({ children }) => {
         },
       });
       
-      console.log('AuthContext: Login completado exitosamente');
+      // Iniciar Long Polling
+      try {
+        const longPollingService = (await import('../services/longPollingService')).default;
+        longPollingService.setAuthToken(response.token);
+        longPollingService.setPollingInterval(30000);
+        await longPollingService.start();
+        console.log('📡 Long Polling iniciado');
+      } catch (error) {
+        console.error('⚠️ Error iniciando Long Polling:', error);
+      }
+      
       return response;
     } catch (error) {
-      console.error('AuthContext: Error en login:', error);
+      console.error('❌ Error en login:', error);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       throw error;
     }
@@ -157,17 +157,22 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Primero limpiamos el almacenamiento local
+      // Detener Long Polling
+      try {
+        const longPollingService = (await import('../services/longPollingService')).default;
+        longPollingService.stop();
+        console.log('🛑 Long Polling detenido');
+      } catch (error) {
+        console.error('⚠️ Error deteniendo Long Polling:', error);
+      }
+      
       await TokenStorage.clearAll();
-      
-      // Finalmente actualizamos el estado
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
       
-      console.log('✅ Sesión cerrada exitosamente');
+      console.log('✅ Sesión cerrada');
     } catch (error) {
-      // Si algo falla, aún así limpiamos el estado local
-      console.log('✅ Sesión cerrada localmente');
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      console.error('❌ Error en logout:', error);
+      throw error;
     }
   };
 
