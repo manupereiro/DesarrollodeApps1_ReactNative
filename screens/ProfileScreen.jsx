@@ -24,7 +24,6 @@ const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [tokenInfo, setTokenInfo] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
 
   // Stats calculadas
@@ -45,7 +44,6 @@ const ProfileScreen = ({ navigation }) => {
       
       // 1. Verificar estado del token
       const currentTokenInfo = await TokenStorage.getTokenInfo();
-      setTokenInfo(currentTokenInfo);
       
       console.log('🔍 ProfileScreen - Estado del token:', currentTokenInfo);
       
@@ -158,30 +156,6 @@ const ProfileScreen = ({ navigation }) => {
     loadProfileData();
   };
 
-  // Display de información del token (solo en desarrollo)
-  const TokenDebugInfo = () => {
-    if (!tokenInfo || !__DEV__) return null;
-    
-    return (
-      <View style={styles.debugCard}>
-        <Text style={styles.debugTitle}>🔍 Token Info (Debug)</Text>
-        <Text style={styles.debugText}>
-          Estado: {tokenInfo.hasToken ? 'Válido' : 'No disponible'}
-        </Text>
-        {tokenInfo.hasToken && (
-          <>
-            <Text style={styles.debugText}>
-              Expira en: {tokenInfo.expiresInMinutes} minutos
-            </Text>
-            <Text style={styles.debugText}>
-              Expira pronto: {tokenInfo.expiresSoon ? 'Sí' : 'No'}
-            </Text>
-          </>
-        )}
-      </View>
-    );
-  };
-
   if (loading && !profileData) {
     return (
       <SafeAreaView style={styles.container}>
@@ -263,9 +237,6 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.statLabel}>Total</Text>
           </View>
         </View>
-
-        {/* Debug Info */}
-        <TokenDebugInfo />
 
         {/* Rutas recientes */}
         {myRoutes && myRoutes.length > 0 && (
@@ -418,26 +389,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
-  },
-  debugCard: {
-    backgroundColor: '#e3f2fd',
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.md,
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.secondary,
-  },
-  debugTitle: {
-    fontSize: FONT_SIZES.sm,
-    fontWeight: 'bold',
-    color: COLORS.secondaryDark,
-    marginBottom: SPACING.sm,
-  },
-  debugText: {
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.secondaryDark,
-    marginBottom: SPACING.xs,
   },
   section: {
     ...CARD_STYLES.default,
