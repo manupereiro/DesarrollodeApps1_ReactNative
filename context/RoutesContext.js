@@ -10,7 +10,9 @@ export const ROUTES_ACTIONS = {
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
   UPDATE_ROUTE_STATUS: 'UPDATE_ROUTE_STATUS',
-  MARK_PACKAGE_SCANNED: 'MARK_PACKAGE_SCANNED'
+  MARK_PACKAGE_SCANNED: 'MARK_PACKAGE_SCANNED',
+  SCAN_QR_SUCCESS: 'SCAN_QR_SUCCESS',
+  CONFIRM_DELIVERY_SUCCESS: 'CONFIRM_DELIVERY_SUCCESS'
 };
 
 // Estado inicial
@@ -141,6 +143,70 @@ const routesReducer = (state, action) => {
         ...state,
         scannedPackages: newScannedPackages,
         myRoutes: updatedRoutes
+      };
+    case ROUTES_ACTIONS.SCAN_QR_SUCCESS:
+      console.log('🔄 REDUCER: Procesando SCAN_QR_SUCCESS:', action.payload);
+      return {
+        ...state,
+        myRoutes: state.myRoutes.map(route =>
+          route.id === action.payload.routeId
+            ? { 
+                ...route, 
+                status: 'IN_PROGRESS',
+                confirmationCode: action.payload.confirmationCode,
+                verificationCode: action.payload.confirmationCode,
+                // Marcar paquete como escaneado
+                packages: route.packages?.map(pkg =>
+                  pkg.id === action.payload.packageId
+                    ? { 
+                        ...pkg, 
+                        scanned: true, 
+                        scannedAt: new Date().toISOString(),
+                        confirmationCode: action.payload.confirmationCode,
+                        verificationCode: action.payload.confirmationCode
+                      }
+                    : pkg
+                ) || []
+              }
+            : route
+        ),
+        availableRoutes: state.availableRoutes.map(route =>
+          route.id === action.payload.routeId
+            ? { 
+                ...route, 
+                status: 'IN_PROGRESS',
+                confirmationCode: action.payload.confirmationCode,
+                verificationCode: action.payload.confirmationCode
+              }
+            : route
+        )
+      };
+    case ROUTES_ACTIONS.CONFIRM_DELIVERY_SUCCESS:
+      console.log('🔄 REDUCER: Procesando CONFIRM_DELIVERY_SUCCESS:', action.payload);
+      return {
+        ...state,
+        myRoutes: state.myRoutes.map(route =>
+          route.id === action.payload.routeId
+            ? { 
+                ...route, 
+                status: 'COMPLETED',
+                completedAt: new Date().toISOString(),
+                completedDate: new Date().toLocaleDateString(),
+                completedTime: new Date().toLocaleTimeString()
+              }
+            : route
+        ),
+        availableRoutes: state.availableRoutes.map(route =>
+          route.id === action.payload.routeId
+            ? { 
+                ...route, 
+                status: 'COMPLETED',
+                completedAt: new Date().toISOString(),
+                completedDate: new Date().toLocaleDateString(),
+                completedTime: new Date().toLocaleTimeString()
+              }
+            : route
+        )
       };
     default:
       return state;
@@ -582,6 +648,68 @@ export const RoutesProvider = ({ children }) => {
     return state.scannedPackages.has(packageId);
   };
 
+  // Escanear QR - NUEVO MÉTODO CON BACKEND REAL
+  const scanQR = async (qrImageBase64) => {
+    try {
+      console.log('🔄 RoutesContext - Escaneando QR con backend real (Base64):', qrImageBase64.substring(0, 100) + '...');
+      dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
+      
+      const result = await routesService.scanQR(qrImageBase64);
+      
+      console.log('✅ RoutesContext - QR escaneado exitosamente:', result);
+      
+      // Actualizar estado con los datos del backend
+      dispatch({ 
+        type: ROUTES_ACTIONS.SCAN_QR_SUCCESS, 
+        payload: {
+          routeId: result.routeId,
+          packageId: result.packageId,
+          confirmationCode: result.confirmationCode,
+          message: result.message
+        } 
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('❌ RoutesContext - Error escaneando QR:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Error al escanear el QR';
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      throw error;
+    } finally {
+      dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
+    }
+  };
+
+  // Confirmar entrega - NUEVO MÉTODO CON BACKEND REAL
+  const confirmDelivery = async (routeId, confirmationCode) => {
+    try {
+      console.log('🔄 RoutesContext - Confirmando entrega con backend real:', { routeId, confirmationCode });
+      dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
+      
+      const result = await routesService.confirmDelivery(routeId, confirmationCode);
+      
+      console.log('✅ RoutesContext - Entrega confirmada exitosamente:', result);
+      
+      // Actualizar estado a COMPLETED
+      dispatch({ 
+        type: ROUTES_ACTIONS.CONFIRM_DELIVERY_SUCCESS, 
+        payload: {
+          routeId: routeId,
+          message: 'Entrega confirmada exitosamente'
+        } 
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('❌ RoutesContext - Error confirmando entrega:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Error al confirmar la entrega';
+      dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
+      throw error;
+    } finally {
+      dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
+    }
+  };
+
   const value = {
     ...state,
     loadRoutes,
@@ -591,7 +719,9 @@ export const RoutesProvider = ({ children }) => {
     getRouteById,
     isRouteAssigned,
     markPackageScanned,
-    isPackageScanned
+    isPackageScanned,
+    scanQR,
+    confirmDelivery
   };
 
   return (

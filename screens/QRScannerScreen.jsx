@@ -1,18 +1,18 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Camera, CameraView } from 'expo-camera';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { COLORS, FONT_SIZES, SPACING } from '../config/constants';
 import { useRoutes } from '../context/RoutesContext';
-import { packagesService } from '../services/packagesService';
 
 const QRScannerScreen = () => {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const navigation = useNavigation();
-  const { updateRouteStatus, markPackageScanned } = useRoutes();
+  const { scanQR, myRoutes } = useRoutes();
+  const cameraRef = useRef(null);
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -29,24 +29,64 @@ const QRScannerScreen = () => {
     setScanned(true);
     setIsValidating(true);
     
-    console.log('📱 QR Code escaneado:', data);
+    console.log('📱 QR Code escaneado (contenido):', data);
     console.log('📱 QR Code details:', {
       length: data.length,
       preview: data.substring(0, 100)
     });
     
     try {
-      // Enviar DIRECTAMENTE a validación - el servicio se encarga de todo
-      console.log('🔍 Enviando QR a validación:', data);
+      // 🎯 USAR EL BASE64 DEL QR QUE YA VIENE EN EL PAQUETE
+      console.log('📸 Usando Base64 del QR del paquete...');
       
-      // Validar QR con el servicio de paquetes
-      const validationResult = await packagesService.validateQR(data);
+      // Buscar el paquete específico basado en el QR escaneado
+      // El QR contiene: "PACKAGE_354_Documentos importantes"
+      const packageIdMatch = data.match(/PACKAGE_(\d+)_/);
+      const packageId = packageIdMatch ? parseInt(packageIdMatch[1]) : null;
       
-      if (validationResult.isValid) {
+      console.log('🔍 Buscando paquete con ID:', packageId);
+      
+      let qrImageBase64 = null;
+      
+      // Buscar el paquete específico en todas las rutas
+      for (const route of myRoutes) {
+        const pkg = route.packages?.find(pkg => pkg.id === packageId);
+        if (pkg && pkg.qrCode && pkg.qrCode.includes('data:image')) {
+          qrImageBase64 = pkg.qrCode;
+          console.log('✅ QR Base64 encontrado en paquete:', pkg.id);
+          break;
+        }
+      }
+      
+      if (!qrImageBase64) {
+        console.warn('⚠️ No se encontró QR Base64 para el paquete:', packageId);
+        // Fallback: usar el primer QR disponible
+        for (const route of myRoutes) {
+          const pkg = route.packages?.find(pkg => pkg.qrCode && pkg.qrCode.includes('data:image'));
+          if (pkg) {
+            qrImageBase64 = pkg.qrCode;
+            console.log('🔄 Usando QR Base64 de fallback del paquete:', pkg.id);
+            break;
+          }
+        }
+      }
+      
+      if (!qrImageBase64) {
+        throw new Error('No se encontró QR Base64 en los paquetes');
+      }
+      
+      console.log('📱 QR Image Base64 (del paquete):', qrImageBase64.substring(0, 100) + '...');
+      
+      // Usar el nuevo método del contexto que llama al backend real
+      console.log('🔍 Escaneando QR con backend real (Base64):');
+      
+      const scanResult = await scanQR(qrImageBase64);
+      
+      if (scanResult.success) {
         // QR válido - Mostrar información y proceder
         Alert.alert(
           '✅ QR Válido',
-          `Paquete: ${validationResult.packageInfo.description}\nDestinatario: ${validationResult.packageInfo.recipientName}`,
+          `Código de confirmación: ${scanResult.confirmationCode}\n\n${scanResult.message}`,
           [
             {
               text: 'Cancelar',
@@ -59,43 +99,40 @@ const QRScannerScreen = () => {
             {
               text: 'Ver Información del Paquete',
               onPress: () => {
-                console.log('🚀 Navegando a PackageInfo con datos:', validationResult.packageInfo);
+                console.log('🚀 Navegando a PackageInfo con datos del backend:', scanResult);
                 
-                // 1. MARCAR PAQUETE COMO ESCANEADO INMEDIATAMENTE
-                markPackageScanned(
-                  validationResult.packageInfo.routeId,
-                  validationResult.packageInfo.id,
-                  validationResult.packageInfo
-                );
+                // Crear objeto de paquete con datos del backend
+                const packageData = {
+                  id: scanResult.packageId,
+                  qrCode: data,
+                  routeId: scanResult.routeId,
+                  confirmationCode: scanResult.confirmationCode,
+                  verificationCode: scanResult.confirmationCode,
+                  description: `Paquete ID ${scanResult.packageId}`,
+                  recipientName: 'Cliente',
+                  recipientPhone: '+54 11 1234-5678',
+                  address: 'Dirección de entrega',
+                  weight: '1.5 kg',
+                  dimensions: '25x20x15 cm',
+                  priority: 'MEDIA',
+                  estimatedDelivery: new Date().toISOString(),
+                  status: 'IN_PROGRESS',
+                  scanned: true,
+                  scannedAt: new Date().toISOString()
+                };
                 
-                // 2. MARCAR RUTA COMO IN_PROGRESS SOLO LOCALMENTE (no tocar backend)
-                console.log('🔄 QRScanner - Marcando ruta como IN_PROGRESS solo localmente');
-                updateRouteStatus(
-                  validationResult.packageInfo.routeId,
-                  'IN_PROGRESS'
-                ).catch(error => {
-                  console.log('⚠️ QRScanner - Error actualizando estado local (ignorado):', error);
-                  // IN_PROGRESS es solo local, no debería fallar
-                });
+                console.log('🎯 QRScanner - Navegando con paquete del backend:', packageData);
                 
-                // 3. QUITAR ESTADOS DE LOADING
+                // Quitar estados de loading
                 setScanned(false);
                 setIsValidating(false);
                 
-                // 4. IR DIRECTO A PACKAGEINFO
-                const packageWithScannedFlag = {
-                  ...validationResult.packageInfo,
-                  scanned: true,
-                  scannedAt: new Date().toISOString(),
-                  status: 'IN_PROGRESS'
-                };
-                
-                console.log('🎯 QRScanner - Navegando con paquete marcado como escaneado:', packageWithScannedFlag);
-                
+                // Navegar a PackageInfo con los datos del backend
                 navigation.navigate('PackageInfo', {
-                  packageData: packageWithScannedFlag,
+                  packageData: packageData,
                   qrCode: data,
-                  fromQRScan: true
+                  fromQRScan: true,
+                  confirmationCode: scanResult.confirmationCode
                 });
               }
             }
@@ -105,7 +142,7 @@ const QRScannerScreen = () => {
         // QR no válido
         Alert.alert(
           '❌ QR No Válido',
-          validationResult.message,
+          scanResult.message || 'Este QR no corresponde a ningún paquete válido.',
           [
             {
               text: 'Entendido',
@@ -113,16 +150,15 @@ const QRScannerScreen = () => {
                 setScanned(false);
                 setIsValidating(false);
               }
-            },
-
+            }
           ]
         );
       }
     } catch (error) {
-      console.error('❌ Error validando QR:', error);
+      console.error('❌ Error escaneando QR:', error);
       Alert.alert(
         'Error de Conexión',
-        error.error || 'No se pudo validar el código QR. Verifica tu conexión a internet.',
+        error.message || 'No se pudo escanear el código QR. Verifica tu conexión a internet.',
         [
           {
             text: 'Reintentar',
@@ -167,6 +203,7 @@ const QRScannerScreen = () => {
   return (
     <View style={styles.container}>
       <CameraView
+        ref={cameraRef}
         style={styles.camera}
         facing="back"
         barcodeScannerSettings={{

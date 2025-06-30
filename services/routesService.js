@@ -279,6 +279,60 @@ export const routesService = {
     });
   },
 
+  // Escanear QR - NUEVO ENDPOINT REAL
+  scanQR: async (qrImageBase64) => {
+    const requestKey = `scanQR-${qrImageBase64.substring(0, 50)}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log('🔄 routesService - Escaneando QR con endpoint real (Base64):', qrImageBase64.substring(0, 100) + '...');
+      
+      // Debug: mostrar el body completo que se va a enviar
+      const requestBody = {
+        qrCode: qrImageBase64
+      };
+      
+      console.log('📤 routesService - Request body:', {
+        qrCodeLength: qrImageBase64.length,
+        qrCodePreview: qrImageBase64.substring(0, 100) + '...',
+        qrCodeEndsWith: qrImageBase64.substring(qrImageBase64.length - 20),
+        bodyKeys: Object.keys(requestBody)
+      });
+      
+      const response = await api.post('/test/scan-qr', requestBody);
+      
+      console.log('✅ routesService - QR escaneado exitosamente:', response.data);
+      
+      return {
+        success: true,
+        confirmationCode: response.data.confirmationCode,
+        routeId: response.data.routeId,
+        packageId: response.data.packageId,
+        message: response.data.message
+      };
+    });
+  },
+
+  // Confirmar entrega - NUEVO ENDPOINT REAL
+  confirmDelivery: async (routeId, confirmationCode) => {
+    const requestKey = `confirmDelivery-${routeId}-${confirmationCode}`;
+    
+    return makeRequest(requestKey, async (api) => {
+      console.log('🔄 routesService - Confirmando entrega con endpoint real:', { routeId, confirmationCode });
+      
+      const response = await api.post('/test/confirm-delivery', {
+        routeId: routeId,
+        confirmationCode: confirmationCode
+      });
+      
+      console.log('✅ routesService - Entrega confirmada exitosamente:', response.data);
+      
+      return {
+        success: true,
+        message: response.data.message || 'Entrega confirmada exitosamente'
+      };
+    });
+  },
+
   // Suscripción a cambios en tiempo real
   subscribeToRoutes: (onUpdate) => {
     // Aquí implementaremos la suscripción en tiempo real
