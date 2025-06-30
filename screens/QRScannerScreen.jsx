@@ -211,18 +211,6 @@ const QRScannerScreen = () => {
         }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleGoBack}
-          >
-            <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Escanear QR</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
         {/* Overlay */}
         <View style={styles.overlay}>
           <View style={styles.unfocusedContainer}>
@@ -236,18 +224,18 @@ const QRScannerScreen = () => {
             </View>
           </View>
           
-          {/* Instrucciones */}
+          {/* Instrucciones - Movidas más abajo */}
           <View style={styles.instructionsContainer}>
             <View style={styles.instructionItem}>
-              <MaterialIcons name="info" size={20} color={COLORS.primary} />
+              <MaterialIcons name="qr-code-scanner" size={24} color={COLORS.primary} />
               <Text style={styles.instructionText}>
                 Apunta la cámara hacia el código QR del paquete
               </Text>
             </View>
             <View style={styles.instructionItem}>
-              <MaterialIcons name="qr-code" size={20} color={COLORS.primary} />
+              <MaterialIcons name="check-circle" size={24} color={COLORS.success} />
               <Text style={styles.instructionText}>
-                El QR debe venir de "Mis Rutas" → Paquetes
+                Asegúrate de que el pedido esté en "Mis Pedidos"
               </Text>
             </View>
           </View>
@@ -283,28 +271,6 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.md,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  backButton: {
-    padding: SPACING.sm,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 20,
-  },
-  headerTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: 'bold',
-    color: COLORS.textOnPrimary,
-  },
-  headerSpacer: {
-    width: 40,
   },
   overlay: {
     position: 'absolute',
@@ -365,7 +331,7 @@ const styles = StyleSheet.create({
   },
   instructionsContainer: {
     position: 'absolute',
-    bottom: 150,
+    bottom: 80,
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,
   },
@@ -443,6 +409,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.sm,
     textAlign: 'center',
+  },
+  backButton: {
+    padding: SPACING.sm,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
   },
   backButtonText: {
     color: COLORS.textOnPrimary,

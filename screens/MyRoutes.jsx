@@ -106,8 +106,8 @@ const MyRoutes = () => {
 
   const handleCancelRoute = async (routeId) => {
     Alert.alert(
-      'Cancelar Ruta',
-      '¿Estás seguro que deseas cancelar esta ruta?',
+      'Cancelar Pedido',
+      '¿Estás seguro que deseas cancelar este pedido?',
       [
         { text: 'No', style: 'cancel' },
         {
@@ -116,9 +116,9 @@ const MyRoutes = () => {
           onPress: async () => {
             try {
               await cancelRoute(routeId);
-              Alert.alert('Éxito', 'Ruta cancelada exitosamente');
+              Alert.alert('Éxito', 'Pedido cancelado exitosamente');
             } catch (error) {
-              Alert.alert('Error', 'No se pudo cancelar la ruta');
+              Alert.alert('Error', 'No se pudo cancelar el pedido');
             }
           }
         }
@@ -307,17 +307,17 @@ const MyRoutes = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <MaterialIcons name="local-shipping" size={64} color={COLORS.textSecondary} />
-      <Text style={styles.emptyTitle}>No tienes rutas activas</Text>
+      <Text style={styles.emptyTitle}>No tienes pedidos activos</Text>
       <Text style={styles.emptySubtitle}>
-        Ve a "Rutas Disponibles" para seleccionar una ruta.{'\n'}
-        Las rutas completadas aparecen en el historial desde tu perfil.
+        Ve a "Pedidos Disponibles" para seleccionar un pedido.{'\n'}
+        Los pedidos completados aparecen en el historial desde tu perfil.
       </Text>
       <TouchableOpacity
         style={styles.availableRoutesButton}
         onPress={() => navigation.navigate('AvailableRoutes')}
       >
         <MaterialIcons name="add-road" size={20} color={COLORS.textOnPrimary} />
-        <Text style={styles.availableRoutesButtonText}>Ver Rutas Disponibles</Text>
+        <Text style={styles.availableRoutesButtonText}>Ver Pedidos Disponibles</Text>
       </TouchableOpacity>
     </View>
   );
@@ -325,7 +325,7 @@ const MyRoutes = () => {
   const statusCounts = getStatusCounts();
 
   if (loading) {
-    return <LoadingSpinner message="Cargando tus rutas..." />;
+    return <LoadingSpinner message="Cargando tus pedidos..." />;
   }
 
   return (
@@ -335,7 +335,7 @@ const MyRoutes = () => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis Rutas</Text>
+        <Text style={styles.headerTitle}>Mis Pedidos</Text>
         <TouchableOpacity onPress={loadRoutes}>
           <MaterialIcons name="refresh" size={24} color={COLORS.textOnPrimary} />
         </TouchableOpacity>
@@ -375,7 +375,7 @@ const MyRoutes = () => {
           onPress={() => navigation.navigate('AvailableRoutes')}
         >
           <MaterialIcons name="add-road" size={24} color={COLORS.primary} />
-          <Text style={styles.quickActionText}>Nuevas Rutas</Text>
+          <Text style={styles.quickActionText}>Nuevos Pedidos</Text>
         </TouchableOpacity>
       </View>
 

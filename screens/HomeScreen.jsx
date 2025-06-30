@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -98,28 +98,23 @@ const HomeScreen = () => {
             </View>
           )}
 
-          <View style={styles.featuresCard}>
-            <Text style={styles.featuresTitle}>Próximas funcionalidades</Text>
-            <View style={styles.featuresList}>
-              <View style={styles.featureItem}>
-                <Ionicons name="location-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Gestión de rutas</Text>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>📊 Estadísticas Rápidas</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Ionicons name="checkmark-circle" size={32} color="#28a745" />
+                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statLabel}>Entregas Completadas</Text>
               </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="qr-code-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Escaneo de códigos QR</Text>
+              <View style={styles.statItem}>
+                <Ionicons name="car" size={32} color="#055A85" />
+                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statLabel}>Pedidos Activos</Text>
               </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="map-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Navegación con Google Maps</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="time-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Historial de entregas</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="notifications-outline" size={20} color="#055A85" />
-                <Text style={styles.featureText}>Notificaciones push</Text>
+              <View style={styles.statItem}>
+                <Ionicons name="star" size={32} color="#ffc107" />
+                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statLabel}>Puntuación</Text>
               </View>
             </View>
           </View>
@@ -230,7 +225,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '500',
   },
-  featuresCard: {
+  statsCard: {
     backgroundColor: '#fff',
     padding: 25,
     borderRadius: 15,
@@ -241,8 +236,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
+    marginTop: 20,
   },
-  featuresTitle: {
+  statsTitle: {
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 20,
@@ -250,24 +246,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 1,
   },
-  featuresList: {
-    gap: 15,
-  },
-  featureItem: {
+  statsGrid: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 15,
     paddingHorizontal: 10,
     backgroundColor: '#F8F9FA',
     borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#86CDE2',
+    marginHorizontal: 5,
   },
-  featureText: {
-    fontSize: 16,
-    marginLeft: 15,
-    color: '#445357',
-    fontWeight: '500',
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#055A85',
+    marginTop: 5,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 5,
   },
 });
 
