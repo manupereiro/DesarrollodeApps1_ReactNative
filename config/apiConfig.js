@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 // IP de tu computadora en la red local (detectada automáticamente)
-const LOCAL_IP = '192.168.1.3'; // 🔥 IP ACTUAL DETECTADA
+const LOCAL_IP = '192.168.0.243'; // 🔥 IP ACTUAL DETECTADA
 
 // Función mejorada para detectar tipo de dispositivo
 const getDeviceType = () => {
@@ -91,7 +91,7 @@ export const getLocalIP = async () => {
     console.log('💡 Para configurar correctamente:');
     console.log('1. Abre CMD/Terminal en tu PC');
     console.log('2. Ejecuta: ipconfig (Windows) o ifconfig (Mac/Linux)');
-    console.log('3. Busca tu IP local (ej: 192.168.1.XX)');
+    console.log('3. Busca tu IP local (ej: 192.168.0.XX)');
     console.log('4. Reemplaza LOCAL_IP en apiConfig.js');
     console.log('5. Asegúrate que el backend esté corriendo en esa IP');
   } catch (error) {

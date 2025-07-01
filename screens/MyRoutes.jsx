@@ -374,19 +374,7 @@ const MyRoutes = () => {
         </View>
       </View>
 
-      {/* Botón para ver historial completo */}
-      {statusCounts.completed > 0 && (
-        <View style={styles.historyButtonContainer}>
-          <TouchableOpacity
-            style={styles.historyButton}
-            onPress={() => navigation.navigate('RouteHistory')}
-          >
-            <MaterialIcons name="history" size={20} color={COLORS.textOnPrimary} />
-            <Text style={styles.historyButtonText}>Ver Historial Completo</Text>
-            <MaterialIcons name="chevron-right" size={20} color={COLORS.textOnPrimary} />
-          </TouchableOpacity>
-        </View>
-      )}
+
 
 
 
@@ -546,27 +534,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
-  historyButtonContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-  },
-  historyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: BORDER_RADIUS.md,
-    ...ELEVATION.low,
-  },
-  historyButtonText: {
-    color: COLORS.textOnPrimary,
-    fontSize: FONT_SIZES.md,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
-  },
+
 
   listContainer: {
     paddingBottom: SPACING.lg,
