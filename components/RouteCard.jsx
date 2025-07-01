@@ -109,7 +109,11 @@ const RouteCard = ({ route, onSelect, onCancel, onComplete, onNavigateToCode, sh
             </View>
             <View style={styles.locationTextContainer}>
               <Text style={styles.locationLabel}>Origen</Text>
-              <Text style={styles.locationText} numberOfLines={1}>{route?.origin || 'Sin origen'}</Text>
+              <Text style={styles.locationText} numberOfLines={1}>
+                {route?.packages && route.packages.length > 0 && route.packages[0].location
+                  ? route.packages[0].location
+                  : (route?.origin || 'Sin origen')}
+              </Text>
             </View>
           </View>
           
