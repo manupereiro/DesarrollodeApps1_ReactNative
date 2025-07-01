@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { authApi } from '../services/authApi';
 import TokenStorage from '../services/tokenStorage';
+import longPollingService from '../services/longPollingService';
 
 // Estados iniciales
 const initialState = {
@@ -90,6 +91,13 @@ export const AuthProvider = ({ children }) => {
         // Delay adicional para asegurar que otros servicios estén listos
         await new Promise(resolve => setTimeout(resolve, 100));
         
+        // Configurar y iniciar Long Polling Service
+        console.log('🔄 AuthContext: Configurando Long Polling Service...');
+        const longPollingService = (await import('../services/longPollingService')).default;
+        longPollingService.setAuthToken(token);
+        longPollingService.setPollingInterval(30000); // 30 segundos
+        await longPollingService.start();
+        
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: { token, user: userData },
@@ -138,6 +146,11 @@ export const AuthProvider = ({ children }) => {
         userDataSaved: !!savedUserData
       });
       
+      // Configurar y iniciar Long Polling Service
+      console.log('🔄 AuthContext: Configurando Long Polling Service después del login...');
+      longPollingService.setAuthToken(response.token);
+      await longPollingService.start();
+      
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
         payload: {
@@ -157,16 +170,17 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Primero limpiamos el almacenamiento local
-      await TokenStorage.clearAll();
+      // Detener Long Polling Service
+      const longPollingService = (await import('../services/longPollingService')).default;
+      longPollingService.stop();
       
+      // Primero limpiamos el almacenamiento local
+      await TokenStorage.clearAll();  
       // Finalmente actualizamos el estado
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
-      
-      console.log('✅ Sesión cerrada exitosamente');
     } catch (error) {
       // Si algo falla, aún así limpiamos el estado local
-      console.log('✅ Sesión cerrada localmente');
+      longPollingService.stop(); // Asegurar que se detenga el servicio
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
     }
   };

@@ -1,38 +1,33 @@
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 
 import { AuthProvider } from './context/AuthContext';
 import { RoutesProvider } from './context/RoutesContext';
 import AppNavigator from './navigation/AppNavigator';
 
-import { registerForPushNotificationsAsync } from './services/pushNotifications';
-import * as userApi from './services/userApi';
 
 export default function App() {
-  const notificationListener = useRef();
-  const responseListener = useRef();
-
   useEffect(() => {
-    registerForPushNotificationsAsync().then(token => {
-      console.log('Expo Push Token:', token);
-      if (token) {
-        userApi.savePushToken(token);
+    // Verificar si estamos en Expo Go
+    const isExpoGo = Constants.appOwnership === 'expo';
+    console.log('🚀 App iniciando -', isExpoGo ? 'Expo Go' : 'Development Build');
+
+    if (isExpoGo) {
+      console.log('📡 Notificaciones vía Long Polling (cada 30s)');
+    }
+
+    // Inicializar Long Polling Service
+    const initializeLongPolling = async () => {
+      try {
+        const longPollingService = await import('./services/longPollingService');
+        console.log('✅ Long Polling Service preparado');
+      } catch (error) {
+        console.error('❌ Error inicializando Long Polling:', error);
       }
-    });
-
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notificación recibida:', notification);
-    });
-
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Respuesta:', response);
-    });
-
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener.current);
-      Notifications.removeNotificationSubscription(responseListener.current);
     };
+
+    initializeLongPolling();
   }, []);
 
   return (
