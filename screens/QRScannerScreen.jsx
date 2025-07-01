@@ -101,21 +101,44 @@ const QRScannerScreen = () => {
               onPress: () => {
                 console.log('🚀 Navegando a PackageInfo con datos del backend:', scanResult);
                 
-                // Crear objeto de paquete con datos del backend
+                // Buscar la ruta correspondiente para obtener el destination
+                const route = myRoutes.find(r => r.id === scanResult.routeId);
+                const routeDestination = route?.destination || 'Av. Corrientes 1234, CABA, Buenos Aires';
+                
+                // Buscar el paquete específico para obtener sus datos reales
+                const realPackage = route?.packages?.find(pkg => pkg.id === scanResult.packageId);
+                
+                console.log('📍 QRScanner - Datos de ruta encontrada:', {
+                  routeId: scanResult.routeId,
+                  routeDestination: routeDestination,
+                  hasRoute: !!route,
+                  hasRealPackage: !!realPackage
+                });
+                
+                if (realPackage) {
+                  console.log('📦 QRScanner - Datos reales del paquete:', {
+                    weight: realPackage.weight,
+                    dimensions: realPackage.dimensions,
+                    description: realPackage.description,
+                    priority: realPackage.priority
+                  });
+                }
+                
+                // Crear objeto de paquete con datos del backend y datos reales del paquete
                 const packageData = {
                   id: scanResult.packageId,
                   qrCode: data,
                   routeId: scanResult.routeId,
                   confirmationCode: scanResult.confirmationCode,
                   verificationCode: scanResult.confirmationCode,
-                  description: `Paquete ID ${scanResult.packageId}`,
-                  recipientName: 'Cliente',
-                  recipientPhone: '+54 11 1234-5678',
-                  address: 'Dirección de entrega',
-                  weight: '1.5 kg',
-                  dimensions: '25x20x15 cm',
-                  priority: 'MEDIA',
-                  estimatedDelivery: new Date().toISOString(),
+                  description: realPackage?.description || `Paquete ID ${scanResult.packageId}`,
+                  recipientName: realPackage?.recipientName || 'Cliente',
+                  recipientPhone: realPackage?.recipientPhone || '+54 11 1234-5678',
+                  address: routeDestination,
+                  weight: realPackage?.weight || '1.5 kg',
+                  dimensions: realPackage?.dimensions || '25x20x15 cm',
+                  priority: realPackage?.priority || getRandomPriority(),
+                  estimatedDelivery: realPackage?.estimatedDelivery || new Date().toISOString(),
                   status: 'IN_PROGRESS',
                   scanned: true,
                   scannedAt: new Date().toISOString()
@@ -170,6 +193,13 @@ const QRScannerScreen = () => {
         ]
       );
     }
+  };
+
+  // Función para generar prioridad aleatoria
+  const getRandomPriority = () => {
+    const priorities = ['BAJA', 'MEDIA', 'ALTA'];
+    const randomIndex = Math.floor(Math.random() * priorities.length);
+    return priorities[randomIndex];
   };
 
   const handleGoBack = () => {

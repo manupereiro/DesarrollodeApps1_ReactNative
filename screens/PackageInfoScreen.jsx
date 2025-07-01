@@ -2,15 +2,15 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Linking,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Linking,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
 import { useRoutes } from '../context/RoutesContext';
@@ -104,11 +104,21 @@ const PackageInfoScreen = () => {
           
           if (matchingPackage) {
             console.log('✅ PackageInfoScreen - Paquete encontrado en ruta local:', route.id);
+            console.log('📍 PackageInfoScreen - Datos de dirección:', {
+              packageAddress: matchingPackage.address,
+              routeDestination: route.destination,
+              finalAddress: matchingPackage.address || route.destination
+            });
+            
+            // Usar la dirección del paquete solo si es válida, sino usar el destino de la ruta
+            const address = (!matchingPackage.address || matchingPackage.address.trim().toLowerCase() === 'dirección de entrega')
+              ? (route.destination || 'Dirección de entrega')
+              : matchingPackage.address;
+            
             return {
               ...matchingPackage,
               routeId: route.id,
-              // Asegurar que tenga datos completos
-              address: matchingPackage.address || route.destination || "Dirección de entrega",
+              address: address,
               status: matchingPackage.status || "ASSIGNED"
             };
           }
@@ -207,13 +217,20 @@ const PackageInfoScreen = () => {
 
   const openInGoogleMaps = () => {
     const address = package_?.address || '';
-    if (!address) {
-      Alert.alert('Error', 'No hay dirección disponible');
+    
+    console.log('🗺️ PackageInfoScreen - Abriendo Google Maps con dirección:', address);
+    
+    // Validar que la dirección sea válida (no sea texto genérico)
+    if (!address || address.toLowerCase().includes('dirección de entrega') || address.trim().length < 5) {
+      console.log('❌ PackageInfoScreen - Dirección inválida:', address);
+      Alert.alert('Error', 'No hay una dirección válida disponible para este paquete');
       return;
     }
     
     const encodedAddress = encodeURIComponent(address);
     const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    
+    console.log('🗺️ PackageInfoScreen - URL de Google Maps:', url);
     
     Linking.canOpenURL(url).then(supported => {
       if (supported) {
@@ -346,7 +363,12 @@ const PackageInfoScreen = () => {
           </View>
           <View style={styles.infoRow}>
             <MaterialIcons name="location-on" size={20} color={COLORS.primary} />
-            <Text style={styles.infoText}>{package_.address}</Text>
+            <Text style={styles.infoText}>
+              {(() => {
+                console.log('📍 PackageInfoScreen - Mostrando dirección en UI:', package_.address);
+                return package_.address;
+              })()}
+            </Text>
           </View>
           {/* Botón Google Maps */}
           <TouchableOpacity 
