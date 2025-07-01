@@ -86,7 +86,7 @@ const QRScannerScreen = () => {
         // QR válido - Mostrar información y proceder
         Alert.alert(
           '✅ QR Válido',
-          `Código de confirmación: ${scanResult.confirmationCode}\n\n${scanResult.message}`,
+          `${scanResult.message}`,
           [
             {
               text: 'Cancelar',
