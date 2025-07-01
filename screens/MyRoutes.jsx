@@ -1,10 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
 import { BORDER_RADIUS, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
@@ -292,7 +291,8 @@ const MyRoutes = () => {
   const getStatusCounts = () => {
     const assigned = syncedRoutes.filter(route => route.status === 'ASSIGNED').length;
     const inProgress = syncedRoutes.filter(route => route.status === 'IN_PROGRESS').length;
-    const completed = syncedRoutes.filter(route => route.status === 'COMPLETED').length;
+    // Contar todas las rutas completadas, no solo las activas
+    const completed = myRoutes.filter(route => route.status === 'COMPLETED').length;
     
     return { assigned, inProgress, completed };
   };
@@ -334,15 +334,25 @@ const MyRoutes = () => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis Pedidos</Text>
-        <TouchableOpacity onPress={loadRoutes}>
-          <MaterialIcons name="refresh" size={24} color={COLORS.textOnPrimary} />
-        </TouchableOpacity>
-      </View>
+      <LinearGradient
+        colors={['#86CDE2', '#055A85']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Mis Pedidos</Text>
+          <TouchableOpacity onPress={loadRoutes}>
+            <MaterialIcons name="refresh" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       {/* Status Summary */}
       <View style={styles.summaryContainer}>
@@ -364,23 +374,21 @@ const MyRoutes = () => {
         </View>
       </View>
 
-      {/* Quick Actions - SIN historial de pedidos */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={[styles.quickActionButton, { flex: 1 }]}
-          onPress={() => navigation.navigate('QRScanner')}
-        >
-          <MaterialIcons name="qr-code-scanner" size={24} color={COLORS.primary} />
-          <Text style={styles.quickActionText}>Escanear QR</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.quickActionButton, { flex: 1 }]}
-          onPress={() => navigation.navigate('AvailableRoutes')}
-        >
-          <MaterialIcons name="add-road" size={24} color={COLORS.primary} />
-          <Text style={styles.quickActionText}>Nuevos Pedidos</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Botón para ver historial completo */}
+      {statusCounts.completed > 0 && (
+        <View style={styles.historyButtonContainer}>
+          <TouchableOpacity
+            style={styles.historyButton}
+            onPress={() => navigation.navigate('RouteHistory')}
+          >
+            <MaterialIcons name="history" size={20} color={COLORS.textOnPrimary} />
+            <Text style={styles.historyButtonText}>Ver Historial Completo</Text>
+            <MaterialIcons name="chevron-right" size={20} color={COLORS.textOnPrimary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+
 
       {/* Error State */}
       {error && (
@@ -507,15 +515,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.primary,
-    ...ELEVATION.low,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 40,
   },
   headerTitle: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.textOnPrimary,
+    color: '#fff',
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -539,27 +546,28 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: SPACING.md,
+  historyButtonContainer: {
     paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.surface,
-    marginBottom: SPACING.xs,
+    paddingVertical: SPACING.sm,
   },
-  quickActionButton: {
+  historyButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.sm,
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.lightGray,
-    minWidth: 80,
+    ...ELEVATION.low,
   },
-  quickActionText: {
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.primary,
-    marginTop: SPACING.xs,
+  historyButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
     fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
   },
+
   listContainer: {
     paddingBottom: SPACING.lg,
   },

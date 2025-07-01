@@ -24,13 +24,12 @@ const RoutesScreen = ({ navigation }) => {
           >
             <MaterialIcons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Gestión de Rutas</Text>
+          <Text style={styles.headerTitle}>Gestión de Pedidos</Text>
           <View style={styles.headerRight} />
         </View>
       </LinearGradient>
 
       <View style={styles.content}>
-        <Text style={styles.title}>Gestión de Pedidos</Text>
           <View style={styles.buttonsContainer}>
           <LinearGradient
             colors={['#86CDE2', '#055A85']}

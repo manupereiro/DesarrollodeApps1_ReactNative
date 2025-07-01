@@ -12,9 +12,11 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useRoutes } from '../context/RoutesContext';
 
 const HomeScreen = () => {
   const { logout, user } = useAuth(); 
+  const { myRoutes } = useRoutes();
   const navigation = useNavigation();
 
   const handleLogout = () => {
@@ -103,18 +105,13 @@ const HomeScreen = () => {
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Ionicons name="checkmark-circle" size={32} color="#28a745" />
-                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statNumber}>{myRoutes?.filter(route => route.status === 'COMPLETED').length || 0}</Text>
                 <Text style={styles.statLabel}>Entregas Completadas</Text>
               </View>
               <View style={styles.statItem}>
                 <Ionicons name="car" size={32} color="#055A85" />
-                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statNumber}>{myRoutes?.filter(route => route.status === 'ASSIGNED' || route.status === 'IN_PROGRESS').length || 0}</Text>
                 <Text style={styles.statLabel}>Pedidos Activos</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Ionicons name="star" size={32} color="#ffc107" />
-                <Text style={styles.statNumber}>0</Text>
-                <Text style={styles.statLabel}>Puntuación</Text>
               </View>
             </View>
           </View>

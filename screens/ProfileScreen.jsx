@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  SafeAreaView
-} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { BORDER_RADIUS, BUTTON_STYLES, CARD_STYLES, COLORS, ELEVATION, FONT_SIZES, SPACING } from '../config/constants';
 import { useAuth } from '../context/AuthContext';
 import { useRoutes } from '../context/RoutesContext';
 import { profileApi } from '../services/profileApi';
 import TokenStorage from '../services/tokenStorage';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION, BUTTON_STYLES, CARD_STYLES } from '../config/constants';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -185,29 +185,7 @@ const ProfileScreen = ({ navigation }) => {
     loadProfileData();
   };
 
-  // Display de información del token (solo en desarrollo)
-  const TokenDebugInfo = () => {
-    if (!tokenInfo || !__DEV__) return null;
-    
-    return (
-      <View style={styles.debugCard}>
-        <Text style={styles.debugTitle}>🔍 Token Info (Debug)</Text>
-        <Text style={styles.debugText}>
-          Estado: {tokenInfo.hasToken ? 'Válido' : 'No disponible'}
-        </Text>
-        {tokenInfo.hasToken && (
-          <>
-            <Text style={styles.debugText}>
-              Expira en: {tokenInfo.expiresInMinutes} minutos
-            </Text>
-            <Text style={styles.debugText}>
-              Expira pronto: {tokenInfo.expiresSoon ? 'Sí' : 'No'}
-            </Text>
-          </>
-        )}
-      </View>
-    );
-  };
+
 
   if (loading && !profileData) {
     return (
@@ -291,8 +269,19 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Debug Info */}
-        <TokenDebugInfo />
+        {/* Botón para ver historial completo */}
+        {completedRoutes.length > 0 && (
+          <View style={styles.historyButtonContainer}>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={() => navigation.navigate('RouteHistory')}
+            >
+              <MaterialIcons name="history" size={20} color={COLORS.textOnPrimary} />
+              <Text style={styles.historyButtonText}>Ver Historial Completo</Text>
+              <MaterialIcons name="chevron-right" size={20} color={COLORS.textOnPrimary} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Rutas recientes */}
         {myRoutes && myRoutes.length > 0 && (
@@ -472,6 +461,27 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.secondaryDark,
     marginBottom: SPACING.xs,
+  },
+  historyButtonContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  historyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+    ...ELEVATION.low,
+  },
+  historyButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
   },
   section: {
     ...CARD_STYLES.default,
