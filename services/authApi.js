@@ -10,12 +10,7 @@ const createAuthApiInstance = async (includeAuth = false) => {
   if (includeAuth) {
     const token = await TokenStorage.getToken();
     if (token) {
-      // Asegurar formato correcto del header Authorization
       headers.Authorization = `Bearer ${token}`;
-      console.log('🔐 authApi - Token agregado al header:', {
-        tokenLength: token.length,
-        headerFormat: `Bearer ${token.substring(0, 20)}...`
-      });
     }
   }
   
@@ -30,20 +25,8 @@ const createAuthApiInstance = async (includeAuth = false) => {
 export const authApi = {
   signup: async (userData) => {
     try {
-      console.log('🔄 authApi.signup - Datos recibidos:', {
-        username: userData.username,
-        email: userData.email,
-        passwordLength: userData.password?.length
-      });
-
       const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/signup', userData);
-      
-      console.log('✅ authApi.signup - Registro exitoso:', {
-        status: response.status,
-        hasData: !!response.data
-      });
-
       return response.data;
     } catch (error) {
       console.error('❌ authApi.signup Error:', {
@@ -57,17 +40,8 @@ export const authApi = {
 
   login: async (credentials) => {
     try {
-      console.log('🔐 authApi.login - Credenciales recibidas:', {
-        username: credentials.username,
-        password: credentials.password
-      });
-      
-      // Verificar configuración de API antes de hacer la petición
-      const config = getApiConfig();
-      console.log('🌐 authApi.login - Configuración API:', config);
-      
       const api = await createAuthApiInstance(false);
-      
+
       // Headers explícitos para login
       const requestConfig = {
         headers: {
@@ -75,35 +49,16 @@ export const authApi = {
           'Accept': 'application/json'
         }
       };
-      
-      console.log('🔐 authApi.login - Headers de la petición:', requestConfig.headers);
-      
+
       const response = await api.post('/auth/login', credentials, requestConfig);
-      
-      // Log detallado de la respuesta
-      console.log('🔐 Login exitoso - Respuesta:', {
-        status: response.status,
-        dataKeys: Object.keys(response.data),
-        hasToken: !!response.data.token,
-        hasUser: !!response.data.user
-      });
 
       // Verificar que el token es válido
       if (response.data.token) {
         const tokenParts = response.data.token.split('.');
-        console.log('🔐 Token recibido:', {
-          header: tokenParts[0]?.substring(0, 10) + '...',
-          payload: tokenParts[1]?.substring(0, 10) + '...',
-          signature: tokenParts[2] ? 'Presente' : 'Ausente',
-          length: response.data.token.length
-        });
-        
-        // Validar estructura JWT
         if (tokenParts.length !== 3) {
           throw new Error('Token con formato inválido');
         }
       } else {
-        console.warn('⚠️ No se recibió token en la respuesta');
         throw new Error('La respuesta del servidor no incluye un token');
       }
 
@@ -188,7 +143,6 @@ export const authApi = {
       return response.data;
     } catch (error) {
       if (error.response?.status === 401 || error.response?.status === 403) {
-        console.log('🔒 Error de autenticación en getProfile, limpiando tokens...');
         await TokenStorage.clearAllAuthData();
       }
       throw error.response?.data || { error: 'Error al obtener perfil' };
@@ -202,17 +156,12 @@ export const authApi = {
       await api.post('/auth/logout').catch(error => {
         // Si el error es 401 o 403, es normal durante el logout
         if (error.response?.status === 401 || error.response?.status === 403) {
-          console.log('🔒 Sesión cerrada exitosamente (token ya inválido)');
           return;
         }
-        console.warn('⚠️ Error no crítico durante logout:', error.message);
       });
-      
-      console.log('✅ Sesión cerrada exitosamente');
       return { success: true };
     } catch (error) {
       // No propagamos el error ya que el logout local es lo importante
-      console.log('✅ Sesión cerrada exitosamente (local)');
       return { success: true };
     }
   },

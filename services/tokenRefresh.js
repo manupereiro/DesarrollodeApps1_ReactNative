@@ -1,5 +1,4 @@
 import TokenStorage from './tokenStorage';
-import authApi from './authApi';
 
 class TokenRefreshService {
   constructor() {
@@ -11,7 +10,6 @@ class TokenRefreshService {
   // Iniciar el servicio de auto-refresh
   startAutoRefresh = async () => {
     try {
-      console.log('🔄 TokenRefresh - Iniciando auto-refresh...');
       await this.scheduleNextRefresh();
     } catch (error) {
       console.error('❌ TokenRefresh - Error iniciando auto-refresh:', error);
@@ -23,7 +21,6 @@ class TokenRefreshService {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
-      console.log('🛑 TokenRefresh - Auto-refresh detenido');
     }
   };
 
@@ -39,13 +36,10 @@ class TokenRefreshService {
       const timeUntilRefresh = this.getTimeUntilRefresh(token);
       
       if (timeUntilRefresh > 0) {
-        console.log(`⏰ TokenRefresh - Próximo refresh en ${Math.floor(timeUntilRefresh / 60000)} minutos`);
-        
         this.refreshTimer = setTimeout(() => {
           this.refreshTokenIfNeeded();
         }, timeUntilRefresh);
       } else {
-        console.log('⚠️ TokenRefresh - Token próximo a expirar, refrescando ahora...');
         await this.refreshTokenIfNeeded();
       }
     } catch (error) {
@@ -72,7 +66,6 @@ class TokenRefreshService {
       
       return Math.max(0, (refreshTime - now) * 1000);
     } catch (error) {
-      console.error('❌ TokenRefresh - Error calculando tiempo:', error);
       return 0;
     }
   };
@@ -80,7 +73,6 @@ class TokenRefreshService {
   // Refrescar token si es necesario
   refreshTokenIfNeeded = async () => {
     if (this.isRefreshing) {
-      console.log('🔄 TokenRefresh - Ya hay un refresh en progreso...');
       return;
     }
 
@@ -92,13 +84,9 @@ class TokenRefreshService {
       const userData = await TokenStorage.getUserData();
       
       if (!userData || !userData.username) {
-        console.log('⚠️ TokenRefresh - No hay credenciales guardadas para refresh');
         return;
       }
 
-      // Aquí podrías implementar un endpoint de refresh token
-      // Por ahora, simularemos que el token se mantiene válido
-      console.log('✅ TokenRefresh - Token mantenido válido (simulado)');
       
       // Programar el próximo refresh
       await this.scheduleNextRefresh();
@@ -116,7 +104,6 @@ class TokenRefreshService {
 
   // Refresh manual del token
   manualRefresh = async () => {
-    console.log('🔄 TokenRefresh - Refresh manual solicitado...');
     await this.refreshTokenIfNeeded();
   };
 }

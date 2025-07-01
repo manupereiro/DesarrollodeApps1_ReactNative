@@ -105,19 +105,14 @@ const routesReducer = (state, action) => {
         )
       };
     case ROUTES_ACTIONS.MARK_PACKAGE_SCANNED:
-      console.log('🔄 REDUCER: Procesando MARK_PACKAGE_SCANNED:', action.payload);
-      console.log('🔄 REDUCER: Estado actual myRoutes:', state.myRoutes.length);
       
       const newScannedPackages = new Set(state.scannedPackages);
       newScannedPackages.add(action.payload.packageId);
       
       const updatedRoutes = state.myRoutes.map(route => {
         if (route.id === action.payload.routeId) {
-          console.log(`🔄 REDUCER: Actualizando ruta ${route.id} con ${route.packages?.length || 0} paquetes`);
-          
           const updatedPackages = route.packages?.map(pkg => {
             if (pkg.id === action.payload.packageId) {
-              console.log(`✅ REDUCER: Marcando paquete ${pkg.id} como escaneado`);
               return { 
                 ...pkg, 
                 scanned: true, 
@@ -137,15 +132,12 @@ const routesReducer = (state, action) => {
         return route;
       });
       
-      console.log('✅ REDUCER: Estado actualizado con paquete escaneado');
-      
       return {
         ...state,
         scannedPackages: newScannedPackages,
         myRoutes: updatedRoutes
       };
     case ROUTES_ACTIONS.SCAN_QR_SUCCESS:
-      console.log('🔄 REDUCER: Procesando SCAN_QR_SUCCESS:', action.payload);
       return {
         ...state,
         myRoutes: state.myRoutes.map(route =>
@@ -182,7 +174,6 @@ const routesReducer = (state, action) => {
         )
       };
     case ROUTES_ACTIONS.CONFIRM_DELIVERY_SUCCESS:
-      console.log('🔄 REDUCER: Procesando CONFIRM_DELIVERY_SUCCESS:', action.payload);
       return {
         ...state,
         myRoutes: state.myRoutes.map(route =>
@@ -249,7 +240,6 @@ export const RoutesProvider = ({ children }) => {
     
     // Evitar requests duplicados
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 LoadRoutes ya en progreso, evitando duplicado');
       return;
     }
     
@@ -275,8 +265,6 @@ export const RoutesProvider = ({ children }) => {
         return;
       }
       
-      console.log('🔍 RoutesContext: Token válido, cargando rutas...');
-      
       // Intentar cargar rutas pero manejar errores graciosamente
       let availableRoutes = [];
       let myRoutes = [];
@@ -285,15 +273,6 @@ export const RoutesProvider = ({ children }) => {
       // Cargar rutas disponibles
       try {
         availableRoutes = await routesService.getAvailableRoutes();
-        console.log('🔍 RoutesContext - Rutas disponibles recibidas:', availableRoutes?.length || 0);
-        if (availableRoutes && availableRoutes.length > 0) {
-          console.log('🔍 RoutesContext - Primera ruta:', {
-            id: availableRoutes[0]?.id,
-            origin: availableRoutes[0]?.origin,
-            destination: availableRoutes[0]?.destination,
-            distance: availableRoutes[0]?.distance
-          });
-        }
       } catch (error) {
         const status = error.response?.status;
         console.warn('⚠️ RoutesContext: Error cargando rutas disponibles:', {
@@ -301,17 +280,15 @@ export const RoutesProvider = ({ children }) => {
           status,
           isAuthError: status === 401 || status === 403
         });
-        
+
         if (status === 403 || status === 401) {
           authErrorCount++;
-          console.log('🔄 RoutesContext: Ignorando error de autenticación en availableRoutes');
         }
       }
       
       // Cargar mis rutas
       try {
         myRoutes = await routesService.getMyRoutes();
-        console.log('🔍 RoutesContext - Mis rutas recibidas:', myRoutes?.length || 0);
       } catch (error) {
         const status = error.response?.status;
         console.warn('⚠️ RoutesContext: Error cargando mis rutas:', {
@@ -319,10 +296,9 @@ export const RoutesProvider = ({ children }) => {
           status,
           isAuthError: status === 401 || status === 403
         });
-        
+
         if (status === 403 || status === 401) {
           authErrorCount++;
-          console.log('🔄 RoutesContext: Ignorando error de autenticación en myRoutes');
         }
       }
       
@@ -343,12 +319,6 @@ export const RoutesProvider = ({ children }) => {
       dispatch({ type: ROUTES_ACTIONS.SET_AVAILABLE_ROUTES, payload: availableRoutes || [] });
       dispatch({ type: ROUTES_ACTIONS.SET_MY_ROUTES, payload: processedMyRoutes });
       
-      console.log('✅ RoutesContext: Rutas cargadas exitosamente:', {
-        availableCount: availableRoutes?.length || 0,
-        myRoutesCount: myRoutes?.length || 0,
-        authErrors: authErrorCount
-      });
-      
     } catch (error) {
       console.error('❌ RoutesContext: Error general cargando rutas:', error);
       dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: error.message });
@@ -365,33 +335,31 @@ export const RoutesProvider = ({ children }) => {
   // Seleccionar una ruta
   const selectRoute = async (routeId) => {
     const requestId = `selectRoute-${routeId}`;
-    
+
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 SelectRoute ya en progreso para:', routeId);
       return;
     }
-    
+
     requestsInProgress.current.add(requestId);
-    
+
     try {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       await routesService.selectRoute(routeId);
-      
+
       // Esperar un poco antes de recargar para evitar race conditions
       setTimeout(() => {
         debouncedLoadRoutes();
       }, 500);
     } catch (error) {
       console.error('❌ RoutesContext - Error en selectRoute:', error);
-      
+
       // Si es error 403/401, no mostrarlo como error crítico
       if (error.response?.status === 403 || error.response?.status === 401) {
-        console.log('🔄 RoutesContext - Error 403/401 en selectRoute, pero la operación puede haber funcionado');
         // Recargar de todas formas
         setTimeout(() => debouncedLoadRoutes(), 500);
         return; // No lanzar error
       }
-      
+
       // Para otros errores reales
       const errorMessage = error.error || error.message || 'Error al seleccionar la ruta';
       dispatch({ type: ROUTES_ACTIONS.SET_ERROR, payload: errorMessage });
@@ -404,16 +372,14 @@ export const RoutesProvider = ({ children }) => {
   // Cancelar una ruta
   const cancelRoute = async (routeId) => {
     const requestId = `cancelRoute-${routeId}`;
-    
+
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 CancelRoute ya en progreso para:', routeId);
       return;
     }
-    
+
     requestsInProgress.current.add(requestId);
-    
+
     try {
-      console.log('🔄 RoutesContext - Cancelando ruta:', routeId);
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
       // Validar que tenemos el routeId
@@ -422,7 +388,6 @@ export const RoutesProvider = ({ children }) => {
       }
       
       const cancelledRoute = await routesService.cancelRoute(routeId);
-      console.log('✅ RoutesContext - Ruta cancelada exitosamente');
       
       // Recargar rutas después de un delay - pero ignorar errores
       setTimeout(() => {
@@ -432,10 +397,9 @@ export const RoutesProvider = ({ children }) => {
       return cancelledRoute;
     } catch (error) {
       console.error('❌ RoutesContext - Error en cancelRoute:', error);
-      
+
       // Si es error 403/401, no mostrarlo como error crítico
       if (error.response?.status === 403 || error.response?.status === 401) {
-        console.log('🔄 RoutesContext - Error 403/401 en cancelRoute, pero la operación puede haber funcionado');
         // Recargar de todas formas
         setTimeout(() => debouncedLoadRoutes(), 300);
         return null; // Retornar null en lugar de error
@@ -456,19 +420,16 @@ export const RoutesProvider = ({ children }) => {
     const requestId = `updateRouteStatus-${routeId}-${status}`;
     
     if (requestsInProgress.current.has(requestId)) {
-      console.log('🔄 UpdateRouteStatus ya en progreso para:', routeId, status);
       return;
     }
     
     requestsInProgress.current.add(requestId);
     
     try {
-      console.log('🔄 RoutesContext - Actualizando estado de ruta:', { routeId, status, extraData });
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
       // NUEVA LÓGICA: IN_PROGRESS solo local, COMPLETED directo de ASSIGNED
       if (status === 'IN_PROGRESS') {
-        console.log('🔄 RoutesContext - IN_PROGRESS es solo local, NO enviando al backend');
         dispatch({ 
           type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
           payload: { 
@@ -480,15 +441,12 @@ export const RoutesProvider = ({ children }) => {
             updatedAt: new Date().toISOString()
           } 
         });
-        console.log('✅ RoutesContext - Estado IN_PROGRESS actualizado SOLO localmente');
         return;
       }
       
       // Para COMPLETED y otros estados, intentar actualizar en el backend
       try {
-        console.log('🔄 RoutesContext - Enviando actualización al backend...');
         const backendResponse = await routesService.updateRouteStatus(routeId, status);
-        console.log('✅ RoutesContext - Backend actualizado exitosamente:', backendResponse);
         
         // Actualizar estado local con los datos del backend + extraData local
         dispatch({ 
@@ -504,14 +462,11 @@ export const RoutesProvider = ({ children }) => {
           } 
         });
         
-        console.log('✅ RoutesContext - Estado de ruta actualizado exitosamente en backend y localmente');
-        
       } catch (backendError) {
         console.warn('⚠️ RoutesContext - Error del backend, continuando con actualización local:', backendError.message);
         
         // Para COMPLETED, SIEMPRE actualizar localmente sin importar el error
         if (status === 'COMPLETED') {
-          console.log('🔄 RoutesContext - Completando entrega localmente a pesar del error del backend');
           dispatch({ 
             type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
             payload: { 
@@ -524,11 +479,9 @@ export const RoutesProvider = ({ children }) => {
             } 
           });
           
-          console.log('✅ RoutesContext - Entrega marcada como completada localmente');
           return; // Salir exitosamente SIN propagar error
         } else {
           // Para otros estados, también actualizar localmente pero logueando la diferencia
-          console.log(`🔄 RoutesContext - Actualizando estado ${status} localmente a pesar del error del backend`);
           dispatch({ 
             type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
             payload: { 
@@ -541,7 +494,6 @@ export const RoutesProvider = ({ children }) => {
             } 
           });
           
-          console.log('✅ RoutesContext - Estado actualizado localmente');
           return; // Salir exitosamente SIN propagar error
         }
       }
@@ -551,7 +503,6 @@ export const RoutesProvider = ({ children }) => {
       console.error('❌ RoutesContext - Error crítico inesperado:', error);
       
       // Incluso en caso de error crítico, intentar actualizar localmente
-      console.log('🔄 RoutesContext - Intentando actualización local como último recurso...');
       try {
         dispatch({ 
           type: ROUTES_ACTIONS.UPDATE_ROUTE_STATUS, 
@@ -565,7 +516,6 @@ export const RoutesProvider = ({ children }) => {
             updatedAt: new Date().toISOString()
           } 
         });
-        console.log('✅ RoutesContext - Actualización local de emergencia exitosa');
       } catch (localError) {
         console.error('❌ RoutesContext - Error incluso en actualización local:', localError);
         const errorMessage = error.response?.data?.message || error.message || 'Error al actualizar el estado de la ruta';
@@ -573,7 +523,6 @@ export const RoutesProvider = ({ children }) => {
       }
       
       // NO propagar el error para evitar romper la UI
-      console.log('🛡️ RoutesContext - Error manejado, no propagando para preservar UX');
     } finally {
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: false });
       requestsInProgress.current.delete(requestId);
@@ -593,54 +542,21 @@ export const RoutesProvider = ({ children }) => {
 
   // Marcar paquete como escaneado
   const markPackageScanned = (routeId, packageId, packageData = {}) => {
-    console.log('🔥 CRÍTICO - markPackageScanned EJECUTÁNDOSE:', { routeId, packageId });
-    console.log('🔥 CRÍTICO - Estado ANTES de marcar:', {
-      myRoutesCount: state.myRoutes.length,
-      scannedPackagesCount: state.scannedPackages.size,
-      scannedPackagesList: Array.from(state.scannedPackages)
-    });
-    
     // Buscar la ruta actual para debug DETALLADO
     const currentRoute = state.myRoutes.find(r => r.id === routeId);
-    if (currentRoute) {
-      console.log('🔥 CRÍTICO - Ruta encontrada ANTES:', {
-        id: currentRoute.id,
-        status: currentRoute.status,
-        packagesCount: currentRoute.packages?.length || 0,
-        packages: currentRoute.packages?.map(pkg => ({
-          id: pkg.id,
-          scanned: pkg.scanned,
-          description: pkg.description
-        })) || []
-      });
-    } else {
-      console.log('❌ CRÍTICO - Ruta NO encontrada:', routeId);
-      console.log('❌ CRÍTICO - Rutas disponibles:', state.myRoutes.map(r => ({ id: r.id, status: r.status })));
+    if (!currentRoute) {
       return; // No hacer nada si no se encuentra la ruta
     }
-    
+
     // Ejecutar dispatch
-    dispatch({ 
-      type: ROUTES_ACTIONS.MARK_PACKAGE_SCANNED, 
-      payload: { 
-        routeId, 
+    dispatch({
+      type: ROUTES_ACTIONS.MARK_PACKAGE_SCANNED,
+      payload: {
+        routeId,
         packageId,
-        packageData 
-      } 
+        packageData
+      }
     });
-    
-    // Debug INMEDIATO después del dispatch
-    setTimeout(() => {
-      const updatedRoute = state.myRoutes.find(r => r.id === routeId);
-      console.log('🔥 CRÍTICO - Estado DESPUÉS de marcar:', {
-        rutaEncontrada: !!updatedRoute,
-        paquetesCount: updatedRoute?.packages?.length || 0,
-        paquetesEscaneados: updatedRoute?.packages?.filter(pkg => pkg.scanned).length || 0,
-        scannedPackagesSize: state.scannedPackages.size
-      });
-    }, 100);
-    
-    console.log('✅ RoutesContext - Dispatch ejecutado exitosamente');
   };
 
   // Verificar si un paquete ha sido escaneado
@@ -651,22 +567,19 @@ export const RoutesProvider = ({ children }) => {
   // Escanear QR - NUEVO MÉTODO CON BACKEND REAL
   const scanQR = async (qrImageBase64) => {
     try {
-      console.log('🔄 RoutesContext - Escaneando QR con backend real (Base64):', qrImageBase64.substring(0, 100) + '...');
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
       const result = await routesService.scanQR(qrImageBase64);
       
-      console.log('✅ RoutesContext - QR escaneado exitosamente:', result);
-      
       // Actualizar estado con los datos del backend
-      dispatch({ 
-        type: ROUTES_ACTIONS.SCAN_QR_SUCCESS, 
+      dispatch({
+        type: ROUTES_ACTIONS.SCAN_QR_SUCCESS,
         payload: {
           routeId: result.routeId,
           packageId: result.packageId,
           confirmationCode: result.confirmationCode,
           message: result.message
-        } 
+        }
       });
       
       return result;
@@ -683,20 +596,17 @@ export const RoutesProvider = ({ children }) => {
   // Confirmar entrega - NUEVO MÉTODO CON BACKEND REAL
   const confirmDelivery = async (routeId, confirmationCode) => {
     try {
-      console.log('🔄 RoutesContext - Confirmando entrega con backend real:', { routeId, confirmationCode });
       dispatch({ type: ROUTES_ACTIONS.SET_LOADING, payload: true });
       
       const result = await routesService.confirmDelivery(routeId, confirmationCode);
       
-      console.log('✅ RoutesContext - Entrega confirmada exitosamente:', result);
-      
       // Actualizar estado a COMPLETED
-      dispatch({ 
-        type: ROUTES_ACTIONS.CONFIRM_DELIVERY_SUCCESS, 
+      dispatch({
+        type: ROUTES_ACTIONS.CONFIRM_DELIVERY_SUCCESS,
         payload: {
           routeId: routeId,
           message: 'Entrega confirmada exitosamente'
-        } 
+        }
       });
       
       return result;
@@ -740,4 +650,4 @@ export const useRoutes = () => {
   return context;
 };
 
-export default RoutesContext; 
+export default RoutesContext;

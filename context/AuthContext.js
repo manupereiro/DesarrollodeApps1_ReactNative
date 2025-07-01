@@ -78,21 +78,16 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthState = async () => {
     try {
-      console.log('AuthContext: Verificando estado de autenticación...');
-      
       // Delay inicial para evitar race conditions al inicio de la app
       await new Promise(resolve => setTimeout(resolve, 200));
       
       const { token, userData } = await TokenStorage.getAuthData();
       
       if (token) {
-        console.log('AuthContext: Token encontrado, actualizando estado...');
-        
         // Delay adicional para asegurar que otros servicios estén listos
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Configurar y iniciar Long Polling Service
-        console.log('🔄 AuthContext: Configurando Long Polling Service...');
         const longPollingService = (await import('../services/longPollingService')).default;
         longPollingService.setAuthToken(token);
         longPollingService.setPollingInterval(30000); // 30 segundos
@@ -103,7 +98,6 @@ export const AuthProvider = ({ children }) => {
           payload: { token, user: userData },
         });
       } else {
-        console.log('AuthContext: No se encontró token, limpiando estado...');
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       }
     } catch (error) {
@@ -117,37 +111,18 @@ export const AuthProvider = ({ children }) => {
       if (!credentials.username || !credentials.password) {
         throw new Error('Usuario y contraseña son requeridos');
       }
-      
-      console.log('AuthContext: Iniciando login con username:', credentials.username);
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       
       // Llamar a authApi.login con el objeto credentials
       const response = await authApi.login(credentials);
-      
-      console.log('AuthContext: Login exitoso, respuesta recibida:', {
-        hasToken: !!response.token,
-        tokenLength: response.token?.length,
-        hasUser: !!response.user,
-        userData: response.user ? {
-          id: response.user.id,
-          username: response.user.username,
-          role: response.user.role
-        } : null
-      });
 
       console.log('AuthContext: Guardando token y datos de usuario...');
       await TokenStorage.setAuthData(response.token, response.user || null);
       
       // Verificar que el token se guardó correctamente
       const { token: savedToken, userData: savedUserData } = await TokenStorage.getAuthData();
-      console.log('AuthContext: Verificación de datos guardados:', {
-        tokenSaved: !!savedToken,
-        tokenLength: savedToken?.length,
-        userDataSaved: !!savedUserData
-      });
       
       // Configurar y iniciar Long Polling Service
-      console.log('🔄 AuthContext: Configurando Long Polling Service después del login...');
       longPollingService.setAuthToken(response.token);
       await longPollingService.start();
       
@@ -159,7 +134,6 @@ export const AuthProvider = ({ children }) => {
         },
       });
       
-      console.log('AuthContext: Login completado exitosamente');
       return response;
     } catch (error) {
       console.error('AuthContext: Error en login:', error);

@@ -11,8 +11,6 @@ class LongPollingService {
     this.authToken = null;
     this.isExpoGo = Constants.appOwnership === 'expo';
     this.notificationHandlerConfigured = false;
-    
-    console.log('🔧 LongPollingService inicializado -', this.isExpoGo ? 'Expo Go' : 'Development Build');
   }
 
   // Configurar el handler de notificaciones
@@ -33,12 +31,10 @@ class LongPollingService {
       // Solicitar permisos de notificaciones
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
-        console.log('⚠️ Permisos de notificación no otorgados');
         return false;
       }
 
       this.notificationHandlerConfigured = true;
-      console.log('✅ Notificaciones locales configuradas');
       return true;
     } catch (error) {
       console.error('❌ Error configurando notificaciones:', error);
@@ -49,14 +45,11 @@ class LongPollingService {
   // Configurar token de autenticación
   setAuthToken(token) {
     this.authToken = token;
-    console.log('🔑 Token de autenticación configurado');
   }
 
   // Configurar intervalo de polling
   setPollingInterval(intervalMs) {
     this.pollingInterval = intervalMs;
-    console.log(`⏱️ Intervalo configurado: ${intervalMs}ms`);
-    
     // Si está corriendo, reiniciar con nuevo intervalo
     if (this.isRunning) {
       this.stop();
@@ -67,16 +60,13 @@ class LongPollingService {
   // Iniciar Long Polling
   async start() {
     if (this.isRunning) {
-      console.log('⚠️ Ya está corriendo');
       return;
     }
 
     if (!this.authToken) {
-      console.log('⚠️ No hay token de autenticación');
       return;
     }
 
-    console.log(`🚀 Iniciando Long Polling cada ${this.pollingInterval}ms`);
     this.isRunning = true;
     
     // Configurar notificaciones
@@ -97,7 +87,6 @@ class LongPollingService {
   stop() {
     if (!this.isRunning) return;
 
-    console.log('🛑 Deteniendo Long Polling');
     this.isRunning = false;
     
     if (this.intervalId) {
@@ -112,8 +101,6 @@ class LongPollingService {
 
     try {
       const now = new Date().toLocaleTimeString();
-      console.log(`📡 [${now}] Verificando notificaciones...`);
-      
       const config = getApiConfig();
       const url = `${config.baseURL}/notifications/poll`;
       
@@ -129,7 +116,6 @@ class LongPollingService {
       if (!response.ok) {
         // Manejo específico de errores de autenticación
         if (response.status === 401 || response.status === 403) {
-          console.log(`🔐 Error de autenticación (${response.status}): Token posiblemente expirado`);
           return;
         }
         
@@ -139,8 +125,6 @@ class LongPollingService {
       const data = await response.json();
       
       if (data.success && data.notifications && data.notifications.length > 0) {
-        console.log(`📬 [${now}] ${data.notifications.length} notificaciones nuevas`);
-        
         // Mostrar cada notificación
         for (const notification of data.notifications) {
           await this.showLocalNotification(notification);
@@ -148,8 +132,6 @@ class LongPollingService {
         
         // Marcar todas como leídas después de mostrarlas
         await this.markAllNotificationsAsRead();
-      } else {
-        console.log(`📭 [${now}] Sin notificaciones nuevas`);
       }
 
     } catch (error) {
@@ -164,12 +146,9 @@ class LongPollingService {
       if (!this.notificationHandlerConfigured) {
         const configured = await this.setupNotificationHandler();
         if (!configured) {
-          console.log('📝 Notificación recibida pero permisos no otorgados:', notification.title);
           return;
         }
       }
-
-      console.log('📱 Mostrando notificación:', notification.title);
       
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -186,6 +165,7 @@ class LongPollingService {
       });
 
     } catch (error) {
+      // Solo log de error
       console.log('📝 No se pudo mostrar notificación local:', notification.title);
     }
   }
@@ -226,4 +206,4 @@ class LongPollingService {
 // Instancia singleton
 const longPollingService = new LongPollingService();
 
-export default longPollingService; 
+export default longPollingService;

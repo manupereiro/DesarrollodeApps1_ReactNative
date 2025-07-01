@@ -10,14 +10,7 @@ const createApiInstance = async () => {
   const headers = { ...config.headers };
   
   if (token) {
-    // Asegurar formato correcto del header Authorization
     headers.Authorization = `Bearer ${token}`;
-    console.log('🔐 routesService - Token agregado al header:', {
-      tokenLength: token.length,
-      tokenPreview: `${token.substring(0, 20)}...`
-    });
-  } else {
-    console.warn('⚠️ routesService - No hay token disponible para la petición');
   }
   
   return axios.create({
@@ -34,7 +27,6 @@ const requestsInProgress = new Map();
 const makeRequest = async (requestKey, requestFn, maxRetries = 2) => {
   // Evitar requests duplicados
   if (requestsInProgress.has(requestKey)) {
-    console.log('🔄 routesService - Request ya en progreso, evitando duplicado:', requestKey);
     return requestsInProgress.get(requestKey);
   }
 
@@ -44,66 +36,44 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 2) => {
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔄 routesService - Intento ${attempt}/${maxRetries} para:`, requestKey);
-        
         // Verificar token antes de cada intento
         const tokenInfo = await TokenStorage.getTokenInfo();
         if (!tokenInfo || !tokenInfo.hasToken) {
-          console.warn('⚠️ routesService - No hay token válido disponible');
           throw new Error('No authentication token available');
         }
         
         if (tokenInfo.isExpired) {
-          console.warn('⚠️ routesService - Token expirado, limpiando...');
           await TokenStorage.clearAllAuthData();
           throw new Error('Token expired');
         }
         
         const api = await createApiInstance();
         const result = await requestFn(api);
-        
-        console.log('✅ routesService - Request exitoso:', requestKey);
         return result;
         
       } catch (error) {
         lastError = error;
         const status = error.response?.status;
         
-        console.log(`❌ routesService - Error en intento ${attempt}:`, {
-          message: error.message,
-          status,
-          isNetworkError: !status,
-          isAuthError: status === 401 || status === 403
-        });
-        
         // Manejar errores de autenticación con más inteligencia
         if (status === 401 || status === 403) {
           consecutiveAuthErrors++;
-          console.log(`🔑 routesService - Error de autenticación #${consecutiveAuthErrors}`);
           
           // 401 = Token inválido/expirado (más crítico)
           // 403 = Sin permisos para esta acción específica (menos crítico)
           
           // Solo limpiar tokens después de MÚLTIPLES errores - MODO TOLERANTE
-          if (status === 401 && consecutiveAuthErrors >= 3) { // Cambiado de 1 a 3
-            console.warn('🔑 routesService - MÚLTIPLES errores 401, token probablemente inválido/expirado');
+          if (status === 401 && consecutiveAuthErrors >= 3) {
             await TokenStorage.clearAllAuthData();
             throw new Error('Authentication failed - invalid token');
-          } else if (status === 403 && consecutiveAuthErrors >= 5) { // Cambiado de 3 a 5
-            console.warn('🔑 routesService - MÚLTIPLES errores 403 consecutivos, limpiando tokens...');
+          } else if (status === 403 && consecutiveAuthErrors >= 5) {
             await TokenStorage.clearAllAuthData();
             throw new Error('Authentication failed - multiple permission errors');
           }
           
-          // Para errores 403 esporádicos, no limpiar tokens inmediatamente
-          if (status === 403) {
-            console.log('🔑 routesService - Error 403 (permisos), puede ser temporal. No limpiando tokens aún.');
-          }
-          
           // Para el primer error o errores 403, esperar y reintentar
           if (attempt < maxRetries) {
-            const authDelayMs = 1000; // Solo 1s fijo
-            console.log(`🔑 routesService - Esperando ${authDelayMs}ms antes de reintentar...`);
+            const authDelayMs = 1000;
             await new Promise(resolve => setTimeout(resolve, authDelayMs));
             continue;
           }
@@ -111,10 +81,8 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 2) => {
         
         // Manejar errores de red con backoff exponencial mejorado
         if (!status) {
-          console.log('🌐 routesService - Error de red, reintentando...');
           if (attempt < maxRetries) {
-            const delayMs = 1500; // Solo 1.5s fijo
-            console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
+            const delayMs = 1500;
             await new Promise(resolve => setTimeout(resolve, delayMs));
             continue;
           }
@@ -122,7 +90,6 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 2) => {
         
         // No reintentar otros errores 4xx (excepto 401/403 ya manejados)
         if (status && status >= 400 && status < 500 && status !== 401 && status !== 403) {
-          console.log('🚫 routesService - Error no reintentable:', status);
           break;
         }
         
@@ -130,8 +97,7 @@ const makeRequest = async (requestKey, requestFn, maxRetries = 2) => {
         if (attempt === maxRetries) break;
         
         // Delay exponencial mejorado para otros errores
-        const delayMs = 1000; // Solo 1s fijo
-        console.log(`⏳ routesService - Esperando ${delayMs}ms antes del siguiente intento...`);
+        const delayMs = 1000;
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
@@ -158,7 +124,6 @@ const checkBackendHealth = async () => {
     const config = getApiConfig();
     const api = axios.create(config);
     await api.get('/routes/health');
-    console.log('✅ routesService - Backend saludable');
     return true;
   } catch (error) {
     console.warn('⚠️ routesService - Backend no disponible:', error.message);
@@ -172,7 +137,6 @@ export const routesService = {
   
   // Debug TokenStorage al inicio
   debugTokenStorage: () => {
-    console.log('🔍 routesService - Verificando TokenStorage al inicio:');
     TokenStorage.debugMethods();
   },
 
@@ -181,22 +145,7 @@ export const routesService = {
     const requestKey = 'getAvailableRoutes';
     
     return makeRequest(requestKey, async (api) => {
-      console.log('🔄 routesService - Obteniendo rutas disponibles...');
       const response = await api.get('/routes/available');
-      console.log('✅ routesService - Rutas disponibles obtenidas:', response.data?.length || 0, 'rutas');
-      
-      // Debug: mostrar la respuesta
-      if (response.data && response.data.length > 0) {
-        console.log(`🔍 routesService - Primera ruta:`, {
-          id: response.data[0]?.id,
-          origin: response.data[0]?.origin,
-          destination: response.data[0]?.destination,
-          status: response.data[0]?.status
-        });
-      } else {
-        console.warn('⚠️ routesService - No se recibieron rutas disponibles');
-      }
-      
       return response.data || [];
     });
   },
@@ -206,22 +155,7 @@ export const routesService = {
     const requestKey = 'getMyRoutes';
     
     return makeRequest(requestKey, async (api) => {
-      console.log('🔄 routesService - Obteniendo mis rutas...');
       const response = await api.get('/routes/my-routes');
-      console.log('✅ routesService - Mis rutas obtenidas:', response.data?.length || 0, 'rutas');
-      
-      // Debug: mostrar información de las rutas
-      if (response.data && response.data.length > 0) {
-        console.log(`🔍 routesService - Primera ruta personal:`, {
-          id: response.data[0]?.id,
-          origin: response.data[0]?.origin,
-          destination: response.data[0]?.destination,
-          status: response.data[0]?.status
-        });
-      } else {
-        console.warn('⚠️ routesService - No se encontraron rutas asignadas');
-      }
-      
       return response.data || [];
     });
   },
@@ -231,9 +165,7 @@ export const routesService = {
     const requestKey = `selectRoute-${routeId}`;
     
     return makeRequest(requestKey, async (api) => {
-      console.log(`🔄 routesService - Asignando ruta ${routeId}...`);
       const response = await api.post(`/routes/${routeId}/assign`);
-      console.log('✅ routesService - Ruta asignada exitosamente:', response.data);
       return response.data;
     });
   },
@@ -243,9 +175,7 @@ export const routesService = {
     const requestKey = `cancelRoute-${routeId}`;
     
     return makeRequest(requestKey, async (api) => {
-      console.log(`🔄 routesService - Cancelando ruta ${routeId}...`);
       const response = await api.post(`/routes/${routeId}/cancel`);
-      console.log('✅ routesService - Ruta cancelada exitosamente:', response.data);
       return response.data;
     });
   },
@@ -261,8 +191,6 @@ export const routesService = {
         throw new Error('No hay token disponible');
       }
       
-      console.log(`🔄 routesService - Actualizando estado de ruta ${routeId} a ${status}...`);
-      
       let endpoint;
       let response;
       
@@ -274,7 +202,6 @@ export const routesService = {
         response = await api.put(endpoint, { status });
       }
       
-      console.log('✅ routesService - Estado actualizado exitosamente:', response.data);
       return response.data;
     });
   },
@@ -284,24 +211,10 @@ export const routesService = {
     const requestKey = `scanQR-${qrImageBase64.substring(0, 50)}`;
     
     return makeRequest(requestKey, async (api) => {
-      console.log('🔄 routesService - Escaneando QR con endpoint real (Base64):', qrImageBase64.substring(0, 100) + '...');
-      
-      // Debug: mostrar el body completo que se va a enviar
       const requestBody = {
         qrCode: qrImageBase64
       };
-      
-      console.log('📤 routesService - Request body:', {
-        qrCodeLength: qrImageBase64.length,
-        qrCodePreview: qrImageBase64.substring(0, 100) + '...',
-        qrCodeEndsWith: qrImageBase64.substring(qrImageBase64.length - 20),
-        bodyKeys: Object.keys(requestBody)
-      });
-      
       const response = await api.post('/test/scan-qr', requestBody);
-      
-      console.log('✅ routesService - QR escaneado exitosamente:', response.data);
-      
       return {
         success: true,
         confirmationCode: response.data.confirmationCode,
@@ -317,15 +230,10 @@ export const routesService = {
     const requestKey = `confirmDelivery-${routeId}-${confirmationCode}`;
     
     return makeRequest(requestKey, async (api) => {
-      console.log('🔄 routesService - Confirmando entrega con endpoint real:', { routeId, confirmationCode });
-      
       const response = await api.post('/test/confirm-delivery', {
         routeId: routeId,
         confirmationCode: confirmationCode
       });
-      
-      console.log('✅ routesService - Entrega confirmada exitosamente:', response.data);
-      
       return {
         success: true,
         message: response.data.message || 'Entrega confirmada exitosamente'
@@ -344,4 +252,4 @@ export const routesService = {
   }
 };
 
-export default routesService; 
+export default routesService;
