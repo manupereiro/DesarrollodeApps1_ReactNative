@@ -1,71 +1,215 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  SafeAreaView
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useRoutes } from '../context/RoutesContext';
-import profileApi from '../services/profileApi';
+import { profileApi } from '../services/profileApi';
+import TokenStorage from '../services/tokenStorage';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, ELEVATION, BUTTON_STYLES, CARD_STYLES } from '../config/constants';
 
 const ProfileScreen = ({ navigation }) => {
-  const { state } = useAuth();
-  const { user } = state;
-  const { myRoutes, loading: routesLoading, loadRoutes } = useRoutes();
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
+  const { user, logout } = useAuth();
+  const { myRoutes } = useRoutes();
+  const [profileData, setProfileData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [completedRoutes, setCompletedRoutes] = useState([]);
+  const [tokenInfo, setTokenInfo] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    loadProfileData();
-    loadRoutes();
-  }, []);
+  // Stats calculadas
+  const completedRoutes = myRoutes?.filter(route => route.status === 'COMPLETED') || [];
+  const activeRoutes = myRoutes?.filter(route => 
+    route.status === 'ASSIGNED' || route.status === 'IN_PROGRESS'
+  ) || [];
 
-  useEffect(() => {
-    // Filtrar solo las rutas completadas
-    const completed = myRoutes.filter(route => route.status === 'COMPLETED');
-    // Ordenar por fecha de completado (más recientes primero)
-    const sorted = completed.sort((a, b) => 
-      new Date(b.completedAt || b.updatedAt) - new Date(a.completedAt || a.updatedAt)
-    );
-    setCompletedRoutes(sorted);
-  }, [myRoutes]);
-
-  const loadProfileData = async () => {
+  // Función para cargar datos del perfil con auto-recovery
+  const loadProfileData = async (showLoadingIndicator = true) => {
     try {
-      setLoading(true);
+      if (showLoadingIndicator) {
+        setLoading(true);
+      }
       setError(null);
-      const profileData = await profileApi.getProfile();
-      setProfile(profileData);
-    } catch (err) {
-      console.error('Error cargando datos del perfil:', err);
-      setError(err.message || 'Error al cargar los datos');
-      Alert.alert(
-        'Error',
-        'No se pudieron cargar los datos del perfil. Por favor, intenta de nuevo.'
-      );
+      
+      console.log('🔄 ProfileScreen - Iniciando carga de perfil...');
+      
+      // 1. Verificar estado del token
+      const currentTokenInfo = await TokenStorage.getTokenInfo();
+      setTokenInfo(currentTokenInfo);
+      
+      console.log('🔍 ProfileScreen - Estado del token:', currentTokenInfo);
+      
+      if (!currentTokenInfo?.hasToken) {
+        console.warn('⚠️ ProfileScreen - No hay token, usando datos locales');
+        setProfileData(user);
+        return;
+      }
+      
+      if (currentTokenInfo.isExpired) {
+        console.warn('⚠️ ProfileScreen - Token expirado');
+        throw new Error('Token expirado. Por favor, inicia sesión nuevamente.');
+      }
+      
+      // 2. Intentar auto-recovery si hay problemas previos
+      let profileResult;
+      if (retryCount > 0 || error) {
+        console.log('🔧 ProfileScreen - Usando auto-recovery...');
+        profileResult = await profileApi.recoverProfile();
+        
+        if (!profileResult.success) {
+          if (profileResult.needsReauth) {
+            throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+          }
+          throw new Error(profileResult.error || 'Error recovering profile');
+        }
+        
+        setProfileData(profileResult.data);
+      } else {
+        // 3. Carga normal del perfil
+        console.log('🔄 ProfileScreen - Carga normal del perfil...');
+        const profile = await profileApi.getProfile();
+        setProfileData(profile);
+      }
+      
+      console.log('✅ ProfileScreen - Perfil cargado exitosamente');
+      setRetryCount(0); // Reset retry count on success
+      
+    } catch (error) {
+      console.error('❌ ProfileScreen - Error cargando perfil:', error.message);
+      
+      // Manejar diferentes tipos de errores
+      if (error.message.includes('Token') || error.message.includes('sesión') || error.message.includes('authentication')) {
+        // Error de autenticación - usar datos locales si están disponibles
+        if (user) {
+          console.log('🔄 ProfileScreen - Usando datos locales del usuario');
+          setProfileData(user);
+          setError('Algunos datos pueden no estar actualizados. Desliza hacia abajo para actualizar.');
+        } else {
+          setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
+        }
+      } else if (error.message.includes('network') || error.message.includes('connectivity')) {
+        // Error de red - usar datos locales
+        if (user) {
+          setProfileData(user);
+          setError('Sin conexión. Mostrando datos guardados.');
+        } else {
+          setError('Sin conexión a internet. Revisa tu conexión.');
+        }
+      } else {
+        // Otros errores - ser permisivo
+        if (user) {
+          setProfileData(user);
+          setError('Error cargando algunos datos. Usando información local.');
+        } else {
+          setError('Error cargando el perfil. Intenta nuevamente.');
+        }
+      }
+      
+      setRetryCount(prev => prev + 1);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleRefresh = () => {
+  // Función de refresh más inteligente
+  const handleRefresh = useCallback(async () => {
+    console.log('🔄 ProfileScreen - Refresh solicitado...');
+    setRefreshing(true);
+    setError(null);
+    await loadProfileData(false);
+  }, [retryCount]);
+
+  // Cargar datos al montar el componente
+  useEffect(() => {
     loadProfileData();
-    loadRoutes();
+  }, []);
+
+  // Auto-refresh cada 30 segundos si hay errores
+  useEffect(() => {
+    if (error && retryCount > 0 && retryCount < 3) {
+      const timer = setTimeout(() => {
+        console.log('🔄 ProfileScreen - Auto-retry debido a error...');
+        loadProfileData(false);
+      }, 30000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [error, retryCount]);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🔄 ProfileScreen - Cerrando sesión...');
+              await logout();
+              console.log('✅ ProfileScreen - Sesión cerrada exitosamente');
+            } catch (error) {
+              console.error('❌ ProfileScreen - Error cerrando sesión:', error);
+              // Continuar con el logout aunque falle
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleRoutePress = (route) => {
     navigation.navigate('RouteDetails', { routeData: route });
   };
 
-  if (loading) {
+  // Función para reintentar manualmente
+  const handleRetry = () => {
+    console.log('🔄 ProfileScreen - Retry manual solicitado...');
+    setError(null);
+    loadProfileData();
+  };
+
+  // Display de información del token (solo en desarrollo)
+  const TokenDebugInfo = () => {
+    if (!tokenInfo || !__DEV__) return null;
+    
+    return (
+      <View style={styles.debugCard}>
+        <Text style={styles.debugTitle}>🔍 Token Info (Debug)</Text>
+        <Text style={styles.debugText}>
+          Estado: {tokenInfo.hasToken ? 'Válido' : 'No disponible'}
+        </Text>
+        {tokenInfo.hasToken && (
+          <>
+            <Text style={styles.debugText}>
+              Expira en: {tokenInfo.expiresInMinutes} minutos
+            </Text>
+            <Text style={styles.debugText}>
+              Expira pronto: {tokenInfo.expiresSoon ? 'Sí' : 'No'}
+            </Text>
+          </>
+        )}
+      </View>
+    );
+  };
+
+  if (loading && !profileData) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -73,50 +217,20 @@ const ProfileScreen = ({ navigation }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mi Perfil</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2196F3" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Cargando perfil...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Mi Perfil</Text>
-          <TouchableOpacity 
-            style={styles.refreshButton}
-            onPress={handleRefresh}
-          >
-            <Ionicons name="refresh" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color="#f44336" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={handleRefresh}
-          >
-            <Text style={styles.retryButtonText}>Intentar de nuevo</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const displayData = profileData || user || {};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -125,109 +239,94 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <MaterialIcons name="arrow-back" size={24} color={COLORS.textOnPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mi Perfil</Text>
-        <TouchableOpacity 
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-        >
-          <Ionicons name="refresh" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={60} color="#2196F3" />
-            </View>
-            <TouchableOpacity style={styles.editButton}>
-              <Ionicons name="camera" size={20} color="#fff" />
+      <ScrollView 
+        style={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Error Banner */}
+        {error && (
+          <View style={styles.errorBanner}>
+            <MaterialIcons name="warning" size={20} color={COLORS.warning} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={handleRetry} style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>Reintentar</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{profile?.username || 'Usuario'}</Text>
-            
-            <View style={styles.infoContainer}>
-              <View style={styles.infoRow}>
-                <Ionicons name="mail-outline" size={20} color="#fff" style={styles.infoIcon} />
-                <Text style={styles.userEmail}>{profile?.email || 'No disponible'}</Text>
-              </View>
-            </View>
+        )}
+
+        {/* Header del perfil */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            <MaterialIcons name="person" size={60} color={COLORS.textOnPrimary} />
+          </View>
+          <Text style={styles.username}>{displayData.username || 'Usuario'}</Text>
+          <Text style={styles.email}>{displayData.email || 'Sin email'}</Text>
+        </View>
+
+        {/* Estadísticas */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <MaterialIcons name="assignment-turned-in" size={30} color={COLORS.success} />
+            <Text style={styles.statNumber}>{completedRoutes.length}</Text>
+            <Text style={styles.statLabel}>Completadas</Text>
+          </View>
+          <View style={styles.statCard}>
+            <MaterialIcons name="local-shipping" size={30} color={COLORS.primary} />
+            <Text style={styles.statNumber}>{activeRoutes.length}</Text>
+            <Text style={styles.statLabel}>Activas</Text>
+          </View>
+          <View style={styles.statCard}>
+            <MaterialIcons name="trending-up" size={30} color={COLORS.warning} />
+            <Text style={styles.statNumber}>{myRoutes?.length || 0}</Text>
+            <Text style={styles.statLabel}>Total</Text>
           </View>
         </View>
 
-        {/* Route History Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Historial de Rutas</Text>
-            <TouchableOpacity 
-              style={styles.seeAllButton}
-              onPress={() => navigation.navigate('RouteHistory')}
-            >
-              <Text style={styles.seeAllButtonText}>Ver todo</Text>
-              <Ionicons name="chevron-forward" size={16} color="#2196F3" />
-            </TouchableOpacity>
-          </View>
+        {/* Debug Info */}
+        <TokenDebugInfo />
 
-          {routesLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#2196F3" />
-              <Text style={styles.loadingText}>Cargando rutas...</Text>
-            </View>
-          ) : completedRoutes.length === 0 ? (
-            <View style={styles.emptyOrdersContainer}>
-              <Ionicons name="checkmark-circle-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyOrdersText}>No hay rutas completadas</Text>
-            </View>
-          ) : (
-            completedRoutes.slice(0, 3).map((route) => (
-              <TouchableOpacity 
-                key={route.id} 
+        {/* Rutas recientes */}
+        {myRoutes && myRoutes.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Rutas Recientes</Text>
+            {myRoutes.slice(0, 3).map((route) => (
+              <TouchableOpacity
+                key={route.id}
                 style={styles.routeCard}
                 onPress={() => handleRoutePress(route)}
               >
-                <View style={styles.routeHeader}>
-                  <View>
-                    <Text style={styles.routeDate}>
-                      {new Date(route.completedAt || route.updatedAt).toLocaleDateString()}
-                    </Text>
-                    <Text style={styles.routeTime}>
-                      {new Date(route.completedAt || route.updatedAt).toLocaleTimeString()}
-                    </Text>
-                  </View>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Completada</Text>
+                <View style={styles.routeInfo}>
+                  <MaterialIcons 
+                    name={route.status === 'COMPLETED' ? 'check-circle' : 'radio-button-unchecked'} 
+                    size={20} 
+                    color={route.status === 'COMPLETED' ? COLORS.success : COLORS.primary} 
+                  />
+                  <View style={styles.routeDetails}>
+                    <Text style={styles.routeDestination}>{route.destination}</Text>
+                    <Text style={styles.routeStatus}>{route.status}</Text>
                   </View>
                 </View>
-
-                <View style={styles.routeContent}>
-                  <View style={styles.locationContainer}>
-                    <Ionicons name="location" size={20} color="#666" />
-                    <Text style={styles.locationText} numberOfLines={1}>{route.origin}</Text>
-                  </View>
-                  <View style={styles.locationContainer}>
-                    <Ionicons name="flag" size={20} color="#666" />
-                    <Text style={styles.locationText} numberOfLines={1}>{route.destination}</Text>
-                  </View>
-                  <View style={styles.detailsContainer}>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="speedometer" size={20} color="#666" />
-                      <Text style={styles.detailText}>{route.distance} km</Text>
-                    </View>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="time" size={20} color="#666" />
-                      <Text style={styles.detailText}>
-                        {route.estimatedDuration ? `${route.estimatedDuration} mins` : 'N/A'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
+                <MaterialIcons name="chevron-right" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
-            ))
-          )}
+            ))}
+          </View>
+        )}
+
+        {/* Botón de cerrar sesión */}
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <MaterialIcons name="logout" size={20} color={COLORS.textOnPrimary} />
+            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -237,273 +336,193 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   header: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    ...ELEVATION.low,
   },
   backButton: {
-    padding: 8,
+    padding: SPACING.sm,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: FONT_SIZES.lg,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.textOnPrimary,
   },
   headerRight: {
     width: 40,
   },
-  refreshButton: {
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-  },
-  profileHeader: {
-    backgroundColor: '#2196F3',
-    paddingTop: 20,
-    paddingBottom: 30,
-    alignItems: 'center',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 24,
-  },
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  editButton: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#1976D2',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  userInfo: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  userName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  infoContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 16,
-    width: '90%',
-    marginTop: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 8,
-  },
-  infoIcon: {
-    marginRight: 12,
-    opacity: 0.9,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
+  scrollContainer: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: SPACING.xxl,
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
+    marginTop: SPACING.md,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  errorBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#fff3cd',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.warning,
   },
   errorText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#f44336',
-    textAlign: 'center',
-    marginBottom: 20,
+    flex: 1,
+    marginLeft: SPACING.sm,
+    fontSize: FONT_SIZES.sm,
+    color: '#856404',
   },
   retryButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: COLORS.warning,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.sm,
   },
   retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  section: {
-    padding: 16,
-    marginTop: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  sectionTitle: {
-    fontSize: 22,
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.xs,
     fontWeight: 'bold',
-    color: '#333',
   },
-  seeAllButton: {
-    flexDirection: 'row',
+  profileHeader: {
+    backgroundColor: COLORS.primary,
+    padding: SPACING.xl,
     alignItems: 'center',
-    backgroundColor: 'rgba(33, 150, 243, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    borderBottomLeftRadius: BORDER_RADIUS.xl,
+    borderBottomRightRadius: BORDER_RADIUS.xl,
   },
-  seeAllButtonText: {
-    color: '#2196F3',
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  emptyOrdersContainer: {
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginTop: 10,
+    marginBottom: SPACING.md,
+    borderWidth: 3,
+    borderColor: COLORS.textOnPrimary,
   },
-  emptyOrdersText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  routeCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  routeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  routeDate: {
-    fontSize: 16,
+  username: {
+    fontSize: FONT_SIZES.xxl,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.textOnPrimary,
+    marginBottom: SPACING.xs,
   },
-  routeTime: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+  email: {
+    fontSize: FONT_SIZES.md,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  statusBadge: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: '#2E7D32',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  routeContent: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-  },
-  locationContainer: {
+  statsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-around',
+    backgroundColor: COLORS.surface,
+    marginTop: -SPACING.lg,
+    marginHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.lg,
+    ...ELEVATION.medium,
   },
-  locationText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
+  statCard: {
+    alignItems: 'center',
     flex: 1,
   },
-  detailsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
+  statNumber: {
+    fontSize: FONT_SIZES.xxl,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginTop: SPACING.xs,
   },
-  detailItem: {
+  statLabel: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  debugCard: {
+    backgroundColor: '#e3f2fd',
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+  },
+  debugTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: 'bold',
+    color: COLORS.secondaryDark,
+    marginBottom: SPACING.sm,
+  },
+  debugText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.secondaryDark,
+    marginBottom: SPACING.xs,
+  },
+  section: {
+    ...CARD_STYLES.default,
+    marginTop: SPACING.lg,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.md,
+  },
+  routeCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
   },
-  detailText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
+  routeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  routeDetails: {
+    marginLeft: SPACING.sm,
+    flex: 1,
+  },
+  routeDestination: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  routeStatus: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  logoutContainer: {
+    padding: SPACING.md,
+    paddingBottom: SPACING.xl,
+  },
+  logoutButton: {
+    ...BUTTON_STYLES.danger,
+    flexDirection: 'row',
+  },
+  logoutButtonText: {
+    color: COLORS.textOnPrimary,
+    fontSize: FONT_SIZES.md,
+    fontWeight: 'bold',
+    marginLeft: SPACING.sm,
   },
 });
 

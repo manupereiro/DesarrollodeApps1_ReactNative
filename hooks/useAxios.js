@@ -1,55 +1,111 @@
-import { useState, useCallback } from 'react';
 import axios from 'axios';
+import { useCallback, useRef, useState } from 'react';
+import { getApiConfig } from '../config/apiConfig';
 import TokenStorage from '../services/tokenStorage';
-import { API_BASE_URL } from '../config/constants';
 
 export const useAxios = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const requestsInProgress = useRef(new Set());
 
   // Crear instancia de axios con configuración personalizada
   const createAxiosInstance = useCallback(async () => {
     const token = await TokenStorage.getToken();
+    const config = getApiConfig();
     
     return axios.create({
-      baseURL: API_BASE_URL,
-      timeout: 10000,
+      baseURL: config.baseURL,
+      timeout: config.timeout,
       headers: {
-        'Content-Type': 'application/json',
+        ...config.headers,
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
   }, []);
 
-  const execute = useCallback(async (config) => {
+  // Función de delay para los reintentos
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Función para verificar si un error es reintentable
+  const isRetryableError = (error) => {
+    const status = error.response?.status;
+    const message = error.message;
+    
+    // Reintentar en errores de red, timeouts, o errores del servidor
+    return (
+      !status || // Error de red
+      status >= 500 || // Errores del servidor
+      status === 408 || // Timeout
+      message.includes('timeout') ||
+      message.includes('Network Error') ||
+      message.includes('JDBC') ||
+      message.includes('prepared statement')
+    );
+  };
+
+  const execute = useCallback(async (config, maxRetries = 2) => {
+    // Crear un identificador único para evitar requests duplicados
+    const requestId = `${config.method}-${config.url}-${Date.now()}`;
+    
+    // Evitar requests duplicados concurrentes
+    if (requestsInProgress.current.has(requestId)) {
+      console.log('🔄 Request ya en progreso, evitando duplicado:', requestId);
+      return;
+    }
+    
+    requestsInProgress.current.add(requestId);
     setLoading(true);
     setError(null);
     
-    try {
-      const axiosInstance = await createAxiosInstance();
-      const response = await axiosInstance(config);
-      
-      setData(response.data);
-      setLoading(false);
-      return response.data;
-    } catch (err) {
-      setLoading(false);
-      
-      // Si es error 401, limpiar tokens
-      if (err.response?.status === 401) {
-        console.log('🔒 Token expirado en useAxios, limpiando...');
-        await TokenStorage.clearAll();
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Intento ${attempt}/${maxRetries} para:`, config.url);
+        
+        const axiosInstance = await createAxiosInstance();
+        const response = await axiosInstance(config);
+        
+        setData(response.data);
+        setLoading(false);
+        requestsInProgress.current.delete(requestId);
+        return response.data;
+        
+      } catch (err) {
+        lastError = err;
+        console.log(`❌ Error en intento ${attempt}:`, err.message);
+        
+        // Si es error 401, limpiar tokens y no reintentar
+        if (err.response?.status === 401) {
+          console.log('🔒 Token expirado, limpiando...');
+          await TokenStorage.clearAll();
+          break;
+        }
+        
+        // Si no es reintentable o es el último intento, salir
+        if (!isRetryableError(err) || attempt === maxRetries) {
+          break;
+        }
+        
+        // Delay exponencial mejorado para reintentos
+        const delayMs = 1000; // Solo 1s fijo
+        console.log(`⏳ Esperando ${delayMs}ms antes del siguiente intento...`);
+        await delay(delayMs);
       }
-      
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message || 
-                          'Network error or server unavailable';
-      setError(errorMessage);
-      throw errorMessage;
     }
-  }, [createAxiosInstance]);
+    
+    // Si llegamos aquí, todos los intentos fallaron
+    setLoading(false);
+    requestsInProgress.current.delete(requestId);
+    
+    const errorMessage = lastError.response?.data?.message || 
+                        lastError.response?.data?.error || 
+                        lastError.message || 
+                        'Network error or server unavailable';
+    setError(errorMessage);
+    throw lastError;
+  }, [createAxiosInstance, isRetryableError]);
 
   const get = useCallback((url, config = {}) => {
     return execute({ method: 'GET', url, ...config });

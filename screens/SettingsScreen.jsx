@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,14 +40,52 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleHelp = () => {
-    // TODO: Implementar sección de ayuda
-    Alert.alert('Próximamente', 'Sección de ayuda en desarrollo');
+    Alert.alert(
+      'Ayuda y Soporte',
+      '¿En qué podemos ayudarte?',
+      [
+        {
+          text: 'Cómo usar la app',
+          onPress: () => Alert.alert(
+            'Guía de Uso',
+            '1. Ve a "Rutas Disponibles" para ver entregas\n2. Selecciona una ruta para aceptarla\n3. Ve a "Mis Pedidos" para ver tus entregas\n4. Usa "Escanear QR" para confirmar entregas\n5. Revisa tu "Historial" de entregas completadas'
+          )
+        },
+        {
+          text: 'Problemas con QR',
+          onPress: () => Alert.alert(
+            'Solución de QR',
+            '• Asegúrate de que el QR esté en "Mis Pedidos"\n• Mantén la cámara estable al escanear\n• Verifica que el código no esté dañado\n• Si persiste, contacta soporte'
+          )
+        },
+        {
+          text: 'Contactar Soporte',
+          onPress: () => Alert.alert(
+            'Contacto',
+            '📧 Email: soporte@deremate.com\n📱 WhatsApp: +54 11 1234-5678\n⏰ Horario: Lunes a Viernes 9-18hs'
+          )
+        },
+        { text: 'Cancelar', style: 'cancel' }
+      ]
+    );
   };
 
   const handleAbout = () => {
-    // TODO: Implementar sección de acerca de
-    Alert.alert('Acerca de', 'Versión 1.0.0\nDesarrollado con ❤️');
+    Alert.alert(
+      'Acerca de De Remate',
+      '🚚 Plataforma de Delivery Inteligente\n\n' +
+      'Versión: 1.0.0\n' +
+      'Desarrollado con React Native\n\n' +
+      'Características:\n' +
+      '• Gestión de rutas en tiempo real\n' +
+      '• Escaneo QR para confirmaciones\n' +
+      '• Historial completo de entregas\n' +
+      '• Interfaz intuitiva y moderna\n\n' +
+      '© 2024 De Remate. Todos los derechos reservados.',
+      [{ text: 'Entendido' }]
+    );
   };
+
   const renderOption = (icon, title, onPress, isDestructive = false) => (
     <TouchableOpacity 
       style={styles.optionButton} 
@@ -71,7 +109,9 @@ const SettingsScreen = ({ navigation }) => {
         color="#999" 
       />
     </TouchableOpacity>
-  );  return (
+  );
+
+  return (
     <View style={styles.container}>
       {/* Custom Header */}
       <LinearGradient

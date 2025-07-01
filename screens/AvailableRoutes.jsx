@@ -5,23 +5,30 @@ import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RouteCard from '../components/RouteCard';
+import { COLORS, FONT_SIZES, SPACING } from '../config/constants';
 import { useRoutes } from '../context/RoutesContext';
 
 const AvailableRoutes = ({ navigation }) => {
   const { availableRoutes, loading, error, selectRoute } = useRoutes();
 
+  // Debug: Log las rutas que llegan al componente
+  console.log('🔍 AvailableRoutes - Rutas disponibles:', availableRoutes?.length || 0);
+  if (availableRoutes && availableRoutes.length > 0) {
+    console.log('🔍 AvailableRoutes - Primera ruta completa:', JSON.stringify(availableRoutes[0], null, 2));
+  }
+
   const handleSelectRoute = async (routeId) => {
     try {
       await selectRoute(routeId);
       Alert.alert(
-        'Ruta seleccionada',
-        'Has seleccionado la ruta exitosamente',
+        'Pedido seleccionado',
+        'Has seleccionado el pedido exitosamente',
         [{ text: 'OK' }]
       );
     } catch (error) {
       Alert.alert(
         'Error',
-        error.message || 'Error al seleccionar la ruta'
+        error.message || 'Error al seleccionar el pedido'
       );
     }
   };
@@ -34,43 +41,30 @@ const AvailableRoutes = ({ navigation }) => {
     return <ErrorMessage message={error} />;
   }
 
+  if (!availableRoutes || availableRoutes.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hay pedidos disponibles en este momento</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#86CDE2', '#055A85']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Rutas Disponibles</Text>
-          <View style={styles.headerRight} />
-        </View>
-      </LinearGradient>
-
-      {availableRoutes.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay rutas disponibles en este momento</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={availableRoutes}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <RouteCard
-              route={item}
-              onSelect={() => handleSelectRoute(item.id)}
-            />
-          )}
-        />
-      )}
+      <FlatList
+        data={availableRoutes}
+        keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
+        renderItem={({ item }) => (
+          <RouteCard
+            route={item}
+            onSelect={() => handleSelectRoute(item.id)}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      />
     </View>
   );
 };
@@ -78,7 +72,21 @@ const AvailableRoutes = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  emptyText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  listContent: {
+    paddingVertical: SPACING.sm,
   },
   headerGradient: {
     elevation: 5,

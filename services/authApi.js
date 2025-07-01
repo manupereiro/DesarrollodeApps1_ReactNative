@@ -2,67 +2,29 @@ import axios from 'axios';
 import { getApiConfig } from '../config/apiConfig';
 import TokenStorage from './tokenStorage';
 
-const api = axios.create(getApiConfig());
-
-// Interceptor para agregar token a las requests
-api.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await TokenStorage.getToken();
-      if (token) {
-        const tokenParts = token.split('.');
-        console.log('🔐 Token encontrado:', {
-          header: tokenParts[0],
-          payload: tokenParts[1],
-          signature: tokenParts[2] ? 'Presente' : 'Ausente',
-          length: token.length,
-        });
-
-        config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        console.log('⚠️ No se encontró token para la petición');
-      }
-    } catch (error) {
-      console.error('❌ Error en interceptor de request:', error);
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor de respuesta
-api.interceptors.response.use(
-  (response) => {
-    console.log('✅ Respuesta recibida:', {
-      url: response.config.url,
-      status: response.status,
-    });
-    return response;
-  },
-  async (error) => {
-    // No loguear errores 403 durante el logout
-    const isLogoutRequest = error.config?.url?.includes('/auth/logout');
-    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
-    
-    if (!(isLogoutRequest && isAuthError)) {
-      console.error('❌ Error en respuesta:', {
-        url: error.config?.url,
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
+// Crear instancia mejorada
+const createAuthApiInstance = async (includeAuth = false) => {
+  const config = getApiConfig();
+  const headers = { ...config.headers };
+  
+  if (includeAuth) {
+    const token = await TokenStorage.getToken();
+    if (token) {
+      // Asegurar formato correcto del header Authorization
+      headers.Authorization = `Bearer ${token}`;
+      console.log('🔐 authApi - Token agregado al header:', {
+        tokenLength: token.length,
+        headerFormat: `Bearer ${token.substring(0, 20)}...`
       });
     }
-
-    if (error.response?.status === 401 && !isLogoutRequest) {
-      console.log('🔒 Token expirado, limpiando almacenamiento...');
-      await TokenStorage.clearAll();
-    }
-
-    return Promise.reject(error);
   }
-);
+  
+  return axios.create({
+    ...config,
+    headers,
+    timeout: 30000 // Aumentar timeout
+  });
+};
 
 // Funciones de autenticación
 export const authApi = {
@@ -74,7 +36,7 @@ export const authApi = {
         passwordLength: userData.password?.length
       });
 
-      // Usar la instancia api configurada en lugar de axios directamente
+      const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/signup', userData);
       
       console.log('✅ authApi.signup - Registro exitoso:', {
@@ -86,17 +48,8 @@ export const authApi = {
     } catch (error) {
       console.error('❌ authApi.signup Error:', {
         message: error.message,
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers
-        } : 'No response',
-        request: error.config ? {
-          url: error.config.url,
-          method: error.config.method,
-          headers: error.config.headers,
-          data: error.config.data
-        } : 'No config'
+        status: error.response?.status,
+        data: error.response?.data
       });
       throw error.response?.data || { error: 'Error en el registro' };
     }
@@ -104,42 +57,53 @@ export const authApi = {
 
   login: async (credentials) => {
     try {
-      console.log('🔐 authApi.login - Credenciales recibidas:', JSON.stringify(credentials, null, 2));
-      console.log('🔐 authApi.login - Headers de la petición:', {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+      console.log('🔐 authApi.login - Credenciales recibidas:', {
+        username: credentials.username,
+        password: credentials.password
       });
       
-      const response = await api.post('/auth/login', credentials);
+      // Verificar configuración de API antes de hacer la petición
+      const config = getApiConfig();
+      console.log('🌐 authApi.login - Configuración API:', config);
+      
+      const api = await createAuthApiInstance(false);
+      
+      // Headers explícitos para login
+      const requestConfig = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      };
+      
+      console.log('🔐 authApi.login - Headers de la petición:', requestConfig.headers);
+      
+      const response = await api.post('/auth/login', credentials, requestConfig);
       
       // Log detallado de la respuesta
-      console.log('🔐 Login exitoso - Respuesta raw:', JSON.stringify(response.data, null, 2));
-      console.log('🔐 Login exitoso - Estructura de la respuesta:', {
+      console.log('🔐 Login exitoso - Respuesta:', {
         status: response.status,
-        headers: response.headers,
         dataKeys: Object.keys(response.data),
-        dataTypes: Object.entries(response.data).reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: typeof value
-        }), {})
+        hasToken: !!response.data.token,
+        hasUser: !!response.data.user
       });
 
       // Verificar que el token es válido
       if (response.data.token) {
         const tokenParts = response.data.token.split('.');
         console.log('🔐 Token recibido:', {
-          header: tokenParts[0],
-          payload: tokenParts[1],
+          header: tokenParts[0]?.substring(0, 10) + '...',
+          payload: tokenParts[1]?.substring(0, 10) + '...',
           signature: tokenParts[2] ? 'Presente' : 'Ausente',
-          length: response.data.token.length,
-          rawToken: response.data.token // Temporal para debug
+          length: response.data.token.length
         });
+        
+        // Validar estructura JWT
+        if (tokenParts.length !== 3) {
+          throw new Error('Token con formato inválido');
+        }
       } else {
-        console.warn('⚠️ No se recibió token en la respuesta. Respuesta completa:', response.data);
-      }
-
-      // Verificar que la respuesta tiene la estructura esperada
-      if (!response.data.token) {
+        console.warn('⚠️ No se recibió token en la respuesta');
         throw new Error('La respuesta del servidor no incluye un token');
       }
 
@@ -147,24 +111,29 @@ export const authApi = {
     } catch (error) {
       console.error('❌ authApi.login Error:', {
         message: error.message,
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers
-        } : 'No response',
-        request: error.config ? {
-          url: error.config.url,
-          method: error.config.method,
-          headers: error.config.headers,
-          data: error.config.data
-        } : 'No config'
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data
       });
+      
+      // Manejar diferentes tipos de errores con más detalle
+      if (error.code === 'ECONNREFUSED' || error.code === 'NETWORK_ERROR') {
+        throw { error: 'No se puede conectar al servidor. Verifica que el backend esté corriendo en ' + getApiConfig().baseURL };
+      } else if (error.code === 'ENOTFOUND') {
+        throw { error: 'No se puede encontrar el servidor. Verifica la configuración de IP: ' + getApiConfig().baseURL };
+      } else if (error.code === 'ETIMEDOUT') {
+        throw { error: 'Timeout de conexión. El servidor no responde en ' + getApiConfig().baseURL };
+      } else if (error.response?.status === 500) {
+        throw { error: 'Error interno del servidor. Por favor intenta nuevamente o contacta al administrador.' };
+      }
+      
       throw error.response?.data || { error: 'Error en el login' };
     }
   },
 
   verifyAccount: async (verificationData) => {
     try {
+      const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/verify', verificationData);
       return response.data;
     } catch (error) {
@@ -174,6 +143,7 @@ export const authApi = {
 
   resendCode: async (resendData) => {
     try {
+      const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/resend', resendData);
       return response.data;
     } catch (error) {
@@ -183,6 +153,7 @@ export const authApi = {
 
   forgotPassword: async (email) => {
     try {
+      const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/forgot-password', { email });
       return response.data;
     } catch (error) {
@@ -192,6 +163,7 @@ export const authApi = {
 
   verifyResetCode: async (verificationData) => {
     try {
+      const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/verify-reset-code', verificationData);
       return response.data;
     } catch (error) {
@@ -201,6 +173,7 @@ export const authApi = {
 
   resetPassword: async (resetData) => {
     try {
+      const api = await createAuthApiInstance(false);
       const response = await api.post('/auth/reset-password', resetData);
       return response.data;
     } catch (error) {
@@ -210,32 +183,36 @@ export const authApi = {
 
   getProfile: async () => {
     try {
+      const api = await createAuthApiInstance(true);
       const response = await api.get('/auth/profile');
       return response.data;
     } catch (error) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.log('🔒 Error de autenticación en getProfile, limpiando tokens...');
+        await TokenStorage.clearAllAuthData();
+      }
       throw error.response?.data || { error: 'Error al obtener perfil' };
     }
   },
 
   logout: async () => {
     try {
-      // Intentamos hacer logout en el backend, pero no es crítico si falla
+      // Intentamos hacer logout en el backend
+      const api = await createAuthApiInstance(true);
       await api.post('/auth/logout').catch(error => {
         // Si el error es 401 o 403, es normal durante el logout
         if (error.response?.status === 401 || error.response?.status === 403) {
-          console.log('🔒 Sesión cerrada exitosamente');
+          console.log('🔒 Sesión cerrada exitosamente (token ya inválido)');
           return;
         }
-        // Para otros errores, los registramos pero no los propagamos
         console.warn('⚠️ Error no crítico durante logout:', error.message);
       });
       
-      // Siempre retornamos éxito ya que el logout local es lo importante
       console.log('✅ Sesión cerrada exitosamente');
       return { success: true };
     } catch (error) {
       // No propagamos el error ya que el logout local es lo importante
-      console.log('✅ Sesión cerrada exitosamente');
+      console.log('✅ Sesión cerrada exitosamente (local)');
       return { success: true };
     }
   },

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
-import authApi from '../services/authApi';
+import { authApi } from '../services/authApi';
 import TokenStorage from '../services/tokenStorage';
 
 // Estados iniciales
@@ -78,10 +78,18 @@ export const AuthProvider = ({ children }) => {
   const checkAuthState = async () => {
     try {
       console.log('AuthContext: Verificando estado de autenticación...');
+      
+      // Delay inicial para evitar race conditions al inicio de la app
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const { token, userData } = await TokenStorage.getAuthData();
       
       if (token) {
         console.log('AuthContext: Token encontrado, actualizando estado...');
+        
+        // Delay adicional para asegurar que otros servicios estén listos
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: { token, user: userData },

@@ -30,7 +30,8 @@ const RoutesScreen = ({ navigation }) => {
       </LinearGradient>
 
       <View style={styles.content}>
-        <View style={styles.buttonsContainer}>
+        <Text style={styles.title}>Gestión de Pedidos</Text>
+          <View style={styles.buttonsContainer}>
           <LinearGradient
             colors={['#86CDE2', '#055A85']}
             start={{ x: 0, y: 0 }}
@@ -42,8 +43,8 @@ const RoutesScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('AvailableRoutes')}
             >
               <MaterialIcons name="local-shipping" size={32} color="#fff" />
-              <Text style={styles.buttonText}>Rutas Disponibles</Text>
-              <Text style={styles.buttonSubtext}>Ver y seleccionar nuevas rutas</Text>
+              <Text style={styles.buttonText}>Pedidos Disponibles</Text>
+              <Text style={styles.buttonSubtext}>Ver y seleccionar nuevos pedidos</Text>
             </TouchableOpacity>
           </LinearGradient>
 
@@ -58,8 +59,8 @@ const RoutesScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('MyRoutes')}
             >
               <MaterialIcons name="assignment" size={32} color="#fff" />
-              <Text style={styles.buttonText}>Mis Rutas</Text>
-              <Text style={styles.buttonSubtext}>Gestionar rutas asignadas</Text>
+              <Text style={styles.buttonText}>Mis Pedidos</Text>
+              <Text style={styles.buttonSubtext}>Gestionar pedidos asignados</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>
